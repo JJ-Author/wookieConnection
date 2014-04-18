@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,10 +32,14 @@ public class LogHandler {
 			file.mkdirs();
 			//Datei ./log/Connection.log mit Größe der max. Value eines Integer, max. 3 Dateien und append
 			FileHandler fh = new FileHandler("./logs/"+logName+"+.log", Integer.MAX_VALUE, 3, true );
+			ConsoleHandler ch = new ConsoleHandler();
+			LogFormatter formatter = new LogFormatter();
+			ch.setFormatter(formatter);
+			fh.setFormatter(formatter);
 			//Logger schreibt somit in die Datei
 			log.addHandler(fh);
-			SimpleFormatter formatter = new SimpleFormatter();
-			fh.setFormatter(formatter);
+			log.addHandler(ch);
+			log.setUseParentHandlers(false);
 		} catch (SecurityException | IOException e) {
 			//Logger schreibt StackTrace der Exception in die Konsole/Log-File
 			StringWriter sw = new StringWriter();
@@ -44,6 +49,7 @@ public class LogHandler {
 		}
 	}
 
+	
 	/**
 	 * Writes the StackTrace into the Logger
 	 * 

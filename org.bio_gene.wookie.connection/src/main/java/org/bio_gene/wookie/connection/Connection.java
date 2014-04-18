@@ -27,7 +27,7 @@ public interface Connection  {
 	public ResultSet execute(String query);
 	
 	public Boolean dropGraph(String graphURI);
-	
+	public void setConnection(java.sql.Connection con);
 	
 	
 }

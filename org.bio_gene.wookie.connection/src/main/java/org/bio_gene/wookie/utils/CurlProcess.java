@@ -15,9 +15,9 @@ public class CurlProcess {
 		this.log = log;
 	}
 	
-	protected Boolean process(String command){
+	protected File setData(String data, String suffix){
 		UUID gen = UUID.randomUUID();
-		File script = new File(String.valueOf(gen.timestamp()));
+		File script = new File(String.valueOf(gen.timestamp())+suffix);
 		while(script.exists()){
 			//try to wait  a short random time 
 			try {
@@ -34,11 +34,19 @@ public class CurlProcess {
 			pw = new PrintWriter(script);
 		} catch (IOException e) {
 			LogHandler.writeStackTrace(log, e, Level.SEVERE);
+			return null;
+		}
+		pw.write(data);
+		pw.close();
+		return script;
+	}
+	
+	protected Boolean process(String command){
+		
+		File script;
+		if((script= setData(command, ".sh"))==null){
 			return false;
 		}
-		pw.write(command);
-		pw.close();
-		
 		script.setExecutable(true);
 		ProcessBuilder pb = new ProcessBuilder("./"+script.getName());
 		pb.directory(new File(script.getAbsolutePath().replace(

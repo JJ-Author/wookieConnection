@@ -32,6 +32,10 @@ public class CurlConnection extends CurlProcess implements Connection {
 	private Graph transactionDelete;
 	
 	public CurlConnection(String jdbcURL,String driver,String user,String password,String curlCommand,String curlDrop){
+		Logger log = Logger.getLogger(this.getClass().getName());
+		log.setLevel(Level.FINE);
+		this.setLogger(log);
+		LogHandler.initLogFileHandler(log, "Connection");
 		this.jdbcURL = jdbcURL;
 		this.driver = driver;
 		this.user = user;
@@ -131,6 +135,12 @@ public class CurlConnection extends CurlProcess implements Connection {
 		if(commit()){
 			this.transaction = false;
 		}
+	}
+
+	@Override
+	public void setConnection(java.sql.Connection con) {
+		this.con = con;
+		
 	}
 	
 
