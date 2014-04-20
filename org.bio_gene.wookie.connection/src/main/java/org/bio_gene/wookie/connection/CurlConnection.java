@@ -22,17 +22,6 @@ import com.hp.hpl.jena.graph.Graph;
 
 public class CurlConnection extends CurlProcess implements Connection {
 
-	
-	/*
-	 * TODO: curlCommand setzen
-	 * %Content
-	 * %Mime
-	 * %UploadType
-	 * %Graph
-	 * %File
-	 */
-	private Map<Object, Object> regex;
-	
 	private String endpoint;
 	private String user;
 	private String password;
@@ -61,13 +50,6 @@ public class CurlConnection extends CurlProcess implements Connection {
 		this.curlCommand = curlCommand;
 		this.curlDrop = curlDrop;
 		this.curlURL = curlURL!=null? curlURL : endpoint;
-		regex = ArrayUtils.toMap(new String[][]{
-			//Manually in the Functions
-			{"%CONTENT-TYPE", "contentType"},
-			{"%MIME", "mimeType"},
-			{"%UPLOAD-TYPE", "type"}, 
-			{"%GRAPH", "graphURI"}, 
-			{"%FILE", "file"}});
 		
 	}
 	
