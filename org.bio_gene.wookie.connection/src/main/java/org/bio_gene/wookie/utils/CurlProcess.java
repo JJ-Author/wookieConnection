@@ -7,6 +7,8 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang3.SystemUtils;
+
 public class CurlProcess {
 	
 	private Logger log;
@@ -43,11 +45,15 @@ public class CurlProcess {
 	
 	protected Boolean process(String command){
 		File script;
-		if((script= setData(command, ".sh"))==null){
+		String suffix = ".sh";
+		if(SystemUtils.IS_OS_WINDOWS){
+			suffix = ".bat";
+		}
+		if((script= setData(command, suffix))==null){
 			return false;
 		}
 		script.setExecutable(true);
-		ProcessBuilder pb = new ProcessBuilder("./"+script.getName());
+		ProcessBuilder pb = new ProcessBuilder("."+File.separator+script.getName());
 		pb.directory(new File(script.getAbsolutePath().replace(
 				script.getName(), File.separator)));
 		try {

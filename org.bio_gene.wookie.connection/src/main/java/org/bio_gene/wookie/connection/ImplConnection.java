@@ -55,4 +55,40 @@ public class ImplConnection implements Connection {
 		return null;
 	}
 
+	@Override
+	public void autoCommit(Boolean autoCommit) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void beginTransaction() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void endTransaction() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void setUploadType(UploadType type) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void setDefaultGraph(String graph) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void setConnection(java.sql.Connection con) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

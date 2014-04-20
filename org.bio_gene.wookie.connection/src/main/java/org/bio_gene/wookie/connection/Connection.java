@@ -20,6 +20,7 @@ public interface Connection  {
 	public void endTransaction();
 	
 	public void setUploadType(UploadType type);
+	public void setDefaultGraph(String graph);
 	
 	public Boolean close();
 	
