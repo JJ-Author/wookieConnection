@@ -2,11 +2,12 @@ package org.bio_gene.wookie.connection;
 
 import java.io.File;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public interface Connection  {
 	
 	public enum UploadType{
-		POST, PUT, DELETE
+		POST, PUT
 	}
 	
 	public Boolean uploadFile(File file);
@@ -18,11 +19,11 @@ public interface Connection  {
 	public void beginTransaction();
 	public void endTransaction();
 	
-	public void setDefaultUploadType(UploadType type);
+	public void setUploadType(UploadType type);
 	
 	public Boolean close();
 	
-	public ResultSet select(String query);
+	public ResultSet select(String query) throws SQLException;
 	public Boolean update(String query);
 	public ResultSet execute(String query);
 	

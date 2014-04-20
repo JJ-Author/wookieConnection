@@ -42,7 +42,6 @@ public class CurlProcess {
 	}
 	
 	protected Boolean process(String command){
-		
 		File script;
 		if((script= setData(command, ".sh"))==null){
 			return false;
