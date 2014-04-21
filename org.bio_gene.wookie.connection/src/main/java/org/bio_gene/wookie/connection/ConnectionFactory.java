@@ -27,7 +27,7 @@ public class ConnectionFactory {
 	
 	private static HashMap<String, String> getParams(Node databases){
 		HashMap<String, String> params = new HashMap<String, String>();
-		
+		// TODO getParams, xsd File!
 		return params;
 	}
 	

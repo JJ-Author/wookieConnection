@@ -166,5 +166,10 @@
 			<name>JBoss repository</name>
 			<url>https://repository.jboss.org/nexus/content/groups/public</url>
 		</repository>
+		<repository>
+			<id>repository.bio-gene</id>
+			<name>BioGene repository</name>
+			<url>http://maven.bio-gene.org/nexus/content/groups/public/</url>
+		</repository>
 	</repositories>
 </project>

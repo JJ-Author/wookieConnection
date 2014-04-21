@@ -91,4 +91,10 @@ public class ImplConnection implements Connection {
 		
 	}
 
+	@Override
+	public void setModelUnionType(ModelUnionType mut) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }
