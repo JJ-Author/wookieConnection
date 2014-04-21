@@ -2,10 +2,8 @@ package org.bio_gene.wookie.utils;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.text.DateFormat;
 import java.util.Date;
 import java.util.logging.Formatter;
-import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
 public class LogFormatter extends Formatter {
