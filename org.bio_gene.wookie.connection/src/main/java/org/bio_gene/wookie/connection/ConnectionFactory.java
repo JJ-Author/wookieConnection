@@ -42,7 +42,7 @@ public class ConnectionFactory {
 
 	public static Connection createCurlConnection(String endpoint,
 			String user, String password, String curlCommand,
-			String curlDrop, String curlURL){
+			String curlDrop, String curlURL, String curlUpdate){
 		curlCommand = curlCommand.replace("%USER", user)
 				.replace("%PWD", password)
 				.replace("%ENDPOINT", endpoint)
@@ -52,33 +52,33 @@ public class ConnectionFactory {
 				.replace("%ENDPOINT", endpoint)
 				.replace("%CURL-URL", curlURL);
 		Connection con = new CurlConnection(endpoint,  user, password,
-				curlCommand, curlDrop, curlURL);
+				curlCommand, curlDrop, curlURL, curlUpdate);
 		con.setConnection(connect(endpoint, ConnectionFactory.driver, user, password));
 		return con;
 	}
 	
 	public static Connection createCurlConnection(String endpoint,
 			String user, String password, String curlCommand,
-			String curlDrop) {
+			String curlDrop, String curlUpdate) {
 		return ConnectionFactory.createCurlConnection(endpoint,
 				user, password,  curlCommand,
-				curlDrop, null);
+				curlDrop, null, curlUpdate);
 	}
 
 	public static Connection createCurlConnection(String endpoint,
-			String curlCommand, String curlDrop, String curlURL) {
+			String curlCommand, String curlDrop, String curlURL, String curlUpdate) {
 
 		return ConnectionFactory.createCurlConnection(endpoint,
 				null, null,  curlCommand,
-				curlDrop, curlURL);
+				curlDrop, curlURL, curlUpdate);
 	}
 	
 	public static Connection createCurlConnection(String endpoint,
-			String curlCommand, String curlDrop) {
+			String curlCommand, String curlDrop, String curlUpdate) {
 
 		return ConnectionFactory.createCurlConnection(endpoint,
 				null, null,  curlCommand,
-				curlDrop, null);
+				curlDrop, null, curlUpdate);
 	}
 	
 	

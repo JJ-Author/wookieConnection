@@ -10,6 +10,10 @@ public interface Connection  {
 		POST, PUT
 	}
 	
+	public enum ModelUnionType{
+		add, union
+	}
+	
 	public Boolean uploadFile(File file);
 	public Boolean uploadFile(String fileName);
 	public Boolean uploadFile(File file, String graphURI);
@@ -21,6 +25,7 @@ public interface Connection  {
 	
 	public void setUploadType(UploadType type);
 	public void setDefaultGraph(String graph);
+	public void setModelUnionType(ModelUnionType mut);
 	
 	public Boolean close();
 	
