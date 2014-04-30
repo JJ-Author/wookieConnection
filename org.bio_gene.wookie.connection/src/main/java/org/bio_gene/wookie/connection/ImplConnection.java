@@ -1,100 +1,232 @@
 package org.bio_gene.wookie.connection;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.LinkedList;
+import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.apache.jena.riot.RDFLanguages;
+import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
+import org.bio_gene.wookie.utils.GraphHandler;
+import org.bio_gene.wookie.utils.LogHandler;
+import org.lexicon.jdbc4sparql.SPARQLConnection;
+
+import com.hp.hpl.jena.graph.Graph;
+import com.hp.hpl.jena.graph.GraphUtil;
+import com.hp.hpl.jena.graph.Triple;
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.util.iterator.ExtendedIterator;
 
 public class ImplConnection implements Connection {
 
+	private java.sql.Connection con;
+	private Logger log;
+	private UploadType type;
+	private Boolean autoCommit = true;
+	private ModelUnionType mut;
+	private Graph transactionInput;
+	private String queries;
+	private boolean transaction;
+	
+	public ImplConnection(){
+		Logger log = Logger.getLogger(this.getClass().getName());
+		log.setLevel(Level.FINE);
+		this.setLogger(log);
+		LogHandler.initLogFileHandler(log, "Connection");
+	}
+	
+	private void setLogger(Logger log) {
+		this.log =log;
+	}
+
 	public Boolean uploadFile(File file) {
-		// TODO Auto-generated method stub
-		return null;
+		return uploadFile(file, null);
 	}
 
 	public Boolean uploadFile(String fileName) {
-		// TODO Auto-generated method stub
-		return null;
+		return uploadFile(new File(fileName));
 	}
 
 	public Boolean uploadFile(File file, String graphURI) {
-		// TODO Auto-generated method stub
-		return null;
+		if(!file.exists()){
+			try{
+				throw new FileNotFoundException();
+			}
+			catch(FileNotFoundException e){
+				LogHandler.writeStackTrace(log, e, Level.SEVERE);
+				return false;
+			}
+		}
+		String absFile = file.getAbsolutePath()+File.separator+file.getName();
+		String contentType = RDFLanguages.guessContentType(absFile).getContentType();
+		
+			Model input = ModelFactory.createModelForGraph(transactionInput);
+			Model add = ModelFactory.createDefaultModel();
+			try {
+				add.read(new FileInputStream(file), null, FileExtensionToRDFContentTypeMapper.guessFileFormat(contentType));
+				switch(this.mut){
+				case add:
+					input.add(add);
+					break;
+				case union:
+					input.union(add);
+					break;
+				default:
+					input.add(add);
+				}
+				this.transactionInput = input.getGraph();
+			} catch (FileNotFoundException e) {
+				LogHandler.writeStackTrace(log, e, Level.SEVERE);
+				return false;
+			}
+			if(!this.autoCommit){
+				return null;
+			}
+			String update = "INSERT ";
+			if(graphURI !=null){
+				update+=" { GRAPH <"+graphURI+"> ";
+			}
+			else if(((SPARQLConnection) this.con).getDefaultGraphs().size()>0){
+				update += " { GRAPH <"+((SPARQLConnection) this.con).getDefaultGraphs().get(0)+"> ";
+			}
+			update+=GraphHandler.GraphToSPARQLString(input.getGraph());
+			if(graphURI !=null || ((SPARQLConnection) this.con).getDefaultGraphs().size()>0){
+				update+=" }";
+			}
+			return this.update(update);
 	}
-
+	
 	public Boolean uploadFile(String fileName, String graphURI) {
-		// TODO Auto-generated method stub
-		return null;
+		return uploadFile(new File(fileName), graphURI);
 	}
 
-	public void setDefaultUploadType(UploadType type) {
-		// TODO Auto-generated method stub
+	public void setUploadType(UploadType type) {
+		this.type = type;
 		
 	}
 
 	public Boolean close() {
-		// TODO Auto-generated method stub
-		return null;
+		try {
+			this.con.close();
+			return true;
+		} catch (SQLException e) {
+			log.severe("Couldn't close Connection: ");
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
+			return false;
+		}
 	}
 
-	public ResultSet select(String query) {
-		// TODO Auto-generated method stub
-		return null;
+	public ResultSet select(String query){
+		try{
+			Statement stm = this.con.createStatement();
+			ResultSet rs = stm.executeQuery(query);
+			stm.close();
+			return rs;
+		}
+		catch(SQLException e){
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
+			return null;
+		}
 	}
 
+	
+	private Boolean updateIntern(String query){
+		try{
+			Statement stm = this.con.createStatement();
+			stm.executeUpdate(query);
+			stm.close();
+			return true;
+		} catch (SQLException e) {
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
+			return false;
+		}
+	}
+	
+	
 	public Boolean update(String query) {
-		// TODO Auto-generated method stub
+		if(autoCommit){
+			return updateIntern(query);
+		}
+		this.queries += query+="\n";
 		return null;
 	}
 
 	public ResultSet execute(String query) {
-		// TODO Auto-generated method stub
-		return null;
+		try {
+			Statement stm = this.con.createStatement();
+			if(stm.execute(query)){
+				return stm.getResultSet();
+			}
+			return null;
+		} catch (SQLException e) {
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
+			return null;
+		}
 	}
 
 	public Boolean dropGraph(String graphURI) {
-		// TODO Auto-generated method stub
-		return null;
+			if(graphURI==null){
+				log.warning("to be deleted Graph URI is null");
+				return false;
+			}
+			String query = "DELETE { GRAPH <"+graphURI+"> }";
+			return this.update(query);
 	}
 
 	@Override
 	public void autoCommit(Boolean autoCommit) {
-		// TODO Auto-generated method stub
-		
+		this.autoCommit = autoCommit;
 	}
 
 	@Override
 	public void beginTransaction() {
-		// TODO Auto-generated method stub
-		
+		this.transaction = true;	
 	}
 
 	@Override
 	public void endTransaction() {
-		// TODO Auto-generated method stub
-		
+		if(commit()){
+			this.transaction = false;
+		}
 	}
 
-	@Override
-	public void setUploadType(UploadType type) {
-		// TODO Auto-generated method stub
-		
+	private boolean commit() {
+		//no need but i'm paranoid ;)
+				if(this.transaction){
+					return updateIntern(this.queries);
+				}
+				log.warning("No current Transaction!");
+				
+				return false;
 	}
 
 	@Override
 	public void setDefaultGraph(String graph) {
-		// TODO Auto-generated method stub
-		
+		if(graph == null){
+			((SPARQLConnection) this.con).setDefaultGraphs(null);
+		}
+		LinkedList<String> graphs = new LinkedList<String>();
+		graphs.add(graph);
+		((SPARQLConnection) this.con).setDefaultGraphs(graphs);
 	}
 
 	@Override
 	public void setConnection(java.sql.Connection con) {
-		// TODO Auto-generated method stub
-		
+		this.con = con;
 	}
 
 	@Override
 	public void setModelUnionType(ModelUnionType mut) {
-		// TODO Auto-generated method stub
-		
+		this.mut = mut;
 	}
 
 }

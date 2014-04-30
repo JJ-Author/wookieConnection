@@ -113,7 +113,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 			Model input = ModelFactory.createModelForGraph(transactionInput);
 			Model add = ModelFactory.createDefaultModel();
 			try {
-				add.read(new FileInputStream(file), null, FileExtensionToRDFContentTypeMapper.guessFileFormat(this.contentType));
+				add.read(new FileInputStream(file), null, FileExtensionToRDFContentTypeMapper.guessFileFormat(contentType));
 				switch(this.mut){
 				case add:
 					input.add(add);
@@ -231,7 +231,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 	
 	public void autoCommit(Boolean autoCommit) {
 		this.autoCommit = autoCommit;
-	}
+	} 
 
 	@Override
 	public void beginTransaction() {
@@ -273,7 +273,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 				String deleter = graphURI.equals("") ? "" : "WITH <"+graphURI+"> "; 
 				deleter +=	"DELETE ";
 				deleter += GraphHandler.GraphToSPARQLString(transactionDelete);
-				curl += "\n "+this.curlDrop.replace("$UPDATE", deleter);
+				curl += "\n "+this.curlUpdate.replace("$UPDATE", deleter);
 			}
 			if(!this.dropGraphs.isEmpty()){
 				for(String graph : this.dropGraphs){
