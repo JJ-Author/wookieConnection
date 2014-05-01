@@ -49,6 +49,21 @@ public class ImplCurlConnection implements Connection {
 		NONE, BASIC, DIGEST
 	}
 	
+	public ImplCurlConnection(String authType, HashMap<String, String> props) {
+		Logger log = Logger.getLogger(this.getClass().getName());
+		log.setLevel(Level.FINE);
+		this.setLogger(log);
+		LogHandler.initLogFileHandler(log, "Connection");
+		this.props = props;
+		if(authType != null){
+			this.authType = AuthType.valueOf(authType);
+		}
+	}
+
+	private void setLogger(Logger log) {
+		this.log = log;
+	}
+
 	public void setAuthType(AuthType authType){
 		this.authType = authType;
 	}

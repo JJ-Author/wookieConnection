@@ -8,6 +8,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -53,6 +54,24 @@ public class ConfigParser {
 		// Erstellt das XML Document
 		DocumentBuilder db = dbf.newDocumentBuilder();
 		cp.xmlFile = db.parse(pathToXMLFile);
+		return cp;
+	}
+	
+	
+	/**
+	 * Generiert den Parser mit dem angegeben Knoten
+	 * 
+	 * 
+	 * @param pathToXMLFile Pfad zur XML Datei
+	 * @return Den generierten Parser
+	 * @throws SAXException
+	 * @throws IOException
+	 * @throws ParserConfigurationException
+	 */
+	public static ConfigParser getParser(Node node) throws SAXException, IOException, ParserConfigurationException{
+		ConfigParser cp = new ConfigParser();
+		cp.current = (Element) node;
+		cp.xmlFile = node.getOwnerDocument();
 		return cp;
 	}
 	
