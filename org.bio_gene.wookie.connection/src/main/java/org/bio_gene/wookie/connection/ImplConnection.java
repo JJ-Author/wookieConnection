@@ -3,15 +3,14 @@ package org.bio_gene.wookie.connection;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.LinkedList;
-import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.jena.riot.RDFLanguages;
 import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
@@ -20,21 +19,18 @@ import org.bio_gene.wookie.utils.LogHandler;
 import org.lexicon.jdbc4sparql.SPARQLConnection;
 
 import com.hp.hpl.jena.graph.Graph;
-import com.hp.hpl.jena.graph.GraphUtil;
-import com.hp.hpl.jena.graph.Triple;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.util.iterator.ExtendedIterator;
 
 public class ImplConnection implements Connection {
 
 	private java.sql.Connection con;
 	private Logger log;
-	private UploadType type;
+	private UploadType type = UploadType.POST;
 	private Boolean autoCommit = true;
-	private ModelUnionType mut;
+	private ModelUnionType mut = ModelUnionType.add;
 	private Graph transactionInput;
-	private String queries;
+	private String queries = "";
 	private boolean transaction;
 	
 	public ImplConnection(){
@@ -140,10 +136,24 @@ public class ImplConnection implements Connection {
 
 	
 	private Boolean updateIntern(String query){
+		switch(this.type){
+		case PUT:
+			String pattern = "GRAPH <[^>]*>";
+			Matcher m = Pattern.compile(pattern).matcher(query);
+			while(m.find()){
+				dropGraph(m.group().replace("GRAPH <", "").replace(">", ""));
+			}
+			break;
+		case POST:
+			break;
+		default:
+			return false;
+		}
 		try{
 			Statement stm = this.con.createStatement();
 			stm.executeUpdate(query);
 			stm.close();
+			this.queries ="";
 			return true;
 		} catch (SQLException e) {
 			LogHandler.writeStackTrace(log, e, Level.SEVERE);
@@ -203,6 +213,7 @@ public class ImplConnection implements Connection {
 		//no need but i'm paranoid ;)
 				if(this.transaction){
 					return updateIntern(this.queries);
+					
 				}
 				log.warning("No current Transaction!");
 				

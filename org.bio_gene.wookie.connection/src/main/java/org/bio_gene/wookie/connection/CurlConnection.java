@@ -5,21 +5,15 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.activation.MimetypesFileTypeMap;
-
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFLanguages;
 import org.bio_gene.wookie.utils.CurlProcess;
 import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
@@ -28,11 +22,8 @@ import org.bio_gene.wookie.utils.LogHandler;
 import org.lexicon.jdbc4sparql.SPARQLConnection;
 
 import com.hp.hpl.jena.graph.Graph;
-import com.hp.hpl.jena.graph.GraphUtil;
-import com.hp.hpl.jena.graph.Triple;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.util.iterator.ExtendedIterator;
 
 public class CurlConnection extends CurlProcess implements Connection {
 
@@ -52,8 +43,8 @@ public class CurlConnection extends CurlProcess implements Connection {
 	private Graph transactionInput;
 	private Graph transactionDelete;
 	private Collection<String> dropGraphs;
-	private UploadType type;
-	private ModelUnionType mut;
+	private UploadType type =  UploadType.POST;
+	private ModelUnionType mut = ModelUnionType.add;
 	
 	public void setModelUnionType(ModelUnionType mut){
 		this.mut = mut;
@@ -137,7 +128,8 @@ public class CurlConnection extends CurlProcess implements Connection {
 				.replace("$FILE", absFile)
 				.replace("$CONTENT-TYPE", contentType)
 				.replace("$MIME-TYPE", mimeType)
-				.replace("$UPLOAD-TYPE", this.type.toString());
+				.replace("$UPLOAD-TYPE", this.type.toString())
+				.replace("$CURL-URL", this.curlURL);
 		return this.process(command);
 	}
 	
@@ -187,7 +179,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 
 	
 	/*
-	 *TODO  Update and execute must be written in Curl!
+	 *TODO  Update and execute must be written in Curl! Update must ask if autoCommit
 	 */
 	public Boolean update(String query) {
 		try {
@@ -267,12 +259,14 @@ public class CurlConnection extends CurlProcess implements Connection {
 						.replace("$FILE", file.getAbsolutePath()+File.separator+file.getName())
 						.replace("$CONTENT-TYPE", this.contentType)
 						.replace("$MIME-TYPE", this.mimeType)
-						.replace("$UPLOAD-TYPE", this.type.toString());
+						.replace("$UPLOAD-TYPE", this.type.toString())
+						.replace("$CURL-URL", this.curlURL);
 			}
 			if(this.transactionDelete != null){
-				String deleter = graphURI.equals("") ? "" : "WITH <"+graphURI+"> "; 
-				deleter +=	"DELETE ";
+				String deleter =	"DELETE ";
+				deleter += graphURI.equals("") ? "" : "{ GRAPH <"+graphURI+"> "; 
 				deleter += GraphHandler.GraphToSPARQLString(transactionDelete);
+				deleter += graphURI.equals("") ? "" : " }"; 
 				curl += "\n "+this.curlUpdate.replace("$UPDATE", deleter);
 			}
 			if(!this.dropGraphs.isEmpty()){
