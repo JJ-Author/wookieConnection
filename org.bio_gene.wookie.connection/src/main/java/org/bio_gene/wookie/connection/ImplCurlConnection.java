@@ -83,8 +83,29 @@ public class ImplCurlConnection implements Connection {
 			con.setDoOutput(true);
 			con.setRequestMethod(this.type.name());
 			if(!this.authType.equals(AuthType.NONE)){
-				String userpass = this.user + ":" + this.pwd;
-				String basicAuth = this.authType.name().toLowerCase()+" " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes("UTF-8"));
+				String userpass = "";
+				String basicAuth = "";
+				String auth = this.authType.name().toLowerCase();
+				char[] stringArray = auth.trim().toCharArray();
+				stringArray[0] = Character.toUpperCase(stringArray[0]);
+		 		auth = new String(stringArray);
+		 		if(this.authType.equals(AuthType.BASIC)){
+		 			userpass = this.user + ":" + this.pwd;;
+		 			basicAuth = auth+" " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes("UTF-8"));	
+		 		}
+		 		else if(this.authType.equals(AuthType.DIGEST)){
+		 			MessageDigest md5 = null;
+    					try {
+		 				md5 = MessageDigest.getInstance("MD5");
+    					} catch(NoSuchAlgorithmException e) {
+      						e.printStackTrace();
+    					}
+		 			md5.update(password.getBytes());
+    					String digestedPass = digest2HexString(md5.digest());
+    					userpass = this.user + ":" + digestPass;
+    					basicAuth = userpass;
+		 		}
+				
 				con.setRequestProperty ("Authorization", basicAuth);
 			}
 			OutputStreamWriter out = new OutputStreamWriter(con.getOutputStream());
