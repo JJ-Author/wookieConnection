@@ -6,6 +6,14 @@ import java.util.Date;
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 
+/**
+ * Schönerer Formatter für Log Files
+ * Format:
+ * "[$LEVEL $DATE] $MESSAGE" 
+ * 
+ * @author Felix Conrads
+ *
+ */
 public class LogFormatter extends Formatter {
 
 	private static final String LINE_SEPARATOR = System

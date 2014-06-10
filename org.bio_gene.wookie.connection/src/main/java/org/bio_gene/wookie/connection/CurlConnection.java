@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -25,11 +27,14 @@ import com.hp.hpl.jena.graph.Graph;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 
+/**
+ * Connection basierend auf Curl Prozessen (auch anderen Scripten).
+ * 
+ * @author Felix Conrads
+ *
+ */
 public class CurlConnection extends CurlProcess implements Connection {
 
-	private String endpoint;
-	private String user;
-	private String password;
 	private String curlCommand;
 	private String curlDrop;
 	private String curlURL;
@@ -46,37 +51,71 @@ public class CurlConnection extends CurlProcess implements Connection {
 	private UploadType type =  UploadType.POST;
 	private ModelUnionType mut = ModelUnionType.add;
 	
+	/**
+	 * Setzt ob die internen Graphen (bei autoCommit false) hinzugefügt oder vereinigt werden soll
+	 * 
+	 * @param mut ADD oder UNION
+	 */
 	public void setModelUnionType(ModelUnionType mut){
 		this.mut = mut;
 	}
 	
+	/**
+	 * ERSTELLT KEINE CONNECTION!
+	 * ConnectionFactory benutzen!
+	 * @param endpoint
+	 * @param user
+	 * @param password
+	 * @param curlCommand
+	 * @param curlDrop
+	 * @param curlURL
+	 * @param curlUpdate
+	 */
 	public CurlConnection(String endpoint, String user,String password, String curlCommand,String curlDrop, 
 			String curlURL, String curlUpdate){
 		Logger log = Logger.getLogger(this.getClass().getName());
 		log.setLevel(Level.FINE);
 		this.setLogger(log);
 		LogHandler.initLogFileHandler(log, "Connection");
-		this.endpoint = endpoint;
-		this.user = user;
-		this.password = password;
 		this.curlCommand = curlCommand;
 		this.curlDrop = curlDrop;
 		this.curlURL = curlURL!=null? curlURL : endpoint;
 		this.curlUpdate = curlUpdate;
 	}
 	
+	/**
+	 * Setzt den Standard MimeType (intern nicht genutzt)
+	 * 
+	 * @param mimeType 
+	 */
 	public void setMimeType(String mimeType){
 		this.mimeType = mimeType;
 	}
 	
+	/**
+	 * Setzt den Standard ContentType (intern nicht genutzt)
+	 * 
+	 * @param contentType
+	 */
 	public void setContentType(String contentType){
 		this.contentType = contentType;
 	}
 
+	/**
+	 * Setzt ob beim Upload eines Files PUT oder POST benutzt werden soll
+	 * 
+	 * @param type PUT oder POST
+	 */
 	public void setUploadType(UploadType type) {
 		this.type = type;
 	}
 	
+	/**
+	 * Setzt den zu benutzenen Default Graph (wird verwendet sofern keine GraphURI extra angegeben wird
+	 * oder null ist
+	 * 
+	 * @param graph Name des Graph
+	 */
 	public void setDefaultGraph(String graph){
 		if(graph == null){
 			((SPARQLConnection) this.con).setDefaultGraphs(null);
@@ -97,7 +136,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 				return false;
 			}
 		}
-		String absFile = file.getAbsolutePath()+File.separator+file.getName();
+		String absFile = file.getAbsolutePath();
 		String contentType = RDFLanguages.guessContentType(absFile).getContentType();
 		
 		if(!this.autoCommit){
@@ -124,35 +163,76 @@ public class CurlConnection extends CurlProcess implements Connection {
 		}
 		//Is there a difference?? 
 		String mimeType = contentType;
-		String command=this.curlCommand.replace("$GRAPH_URI", graphURI)
+		String urlEncoded;
+		try {
+			urlEncoded = URLEncoder.encode(graphURI, "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			urlEncoded=graphURI;
+		}
+		String command=this.curlCommand.replace("$GRAPH-URI", urlEncoded)
 				.replace("$FILE", absFile)
 				.replace("$CONTENT-TYPE", contentType)
 				.replace("$MIME-TYPE", mimeType)
-				.replace("$UPLOAD-TYPE", this.type.toString())
 				.replace("$CURL-URL", this.curlURL);
+		if(this.type.equals(UploadType.POST)){
+			command = command.replace("$UPLOAD-TYPE", "-X POST");
+		}
+		else if(this.type.equals(UploadType.PUT)){
+			command = command.replace("$UPLOAD-TYPE", " ");
+		}
 		return this.process(command);
 	}
 	
 	
+	/**
+	 * Läd die angegebene Datei in den Default Graph sofern in curlCommand $GRAPH-URI gesetzt ist
+	 * 
+	 * @param file Das hochzuladene File
+	 * @return true wenn erfolgreich, false falls misserfolg, null falls autoCommit gleich false 
+	 */
 	public Boolean uploadFile(File file) {
 		return uploadFileIntern(file, ((SPARQLConnection)this.con).getDefaultGraphs().get(0));
 	}
 
+	/**
+	 * Läd die angegebene Datei in den Default Graph sofern in curlCommand $GRAPH-URI gesetzt ist
+	 * 
+	 * @param fileName Name der Hochzuladenen Datei
+	 * @return true wenn erfolgreich, false falls misserfolg, null falls autoCommit gleich false 
+	 */
 	public Boolean uploadFile(String fileName) {
 		File f = new File(fileName);
 		return uploadFile(f);
 	}
 
+	/**
+	 * Läd die angegebene Datei in den angegebenen Graph sofern in curlCommand $GRAPH-URI gesetzt ist
+	 * 
+	 * @param file Das hochzuladene File
+	 * @param graphURI Graph in den geladen werden soll
+	 * @return true wenn erfolgreich, false falls misserfolg, null falls autoCommit gleich false 
+	 */
 	public Boolean uploadFile(File file, String graphURI) {
 		return uploadFileIntern(file, graphURI);
 	}
 
+	/**
+	 * Läd die angegebene Datei in den angegebenen Graph sofern in curlCommand $GRAPH-URI gesetzt ist
+	 * 
+	 * @param fileName Name der hochzuladenen Datei
+	 * @param graphURI Graph in den geladen werden soll
+	 * @return true wenn erfolgreich, false falls misserfolg, null falls autoCommit gleich false 
+	 */
 	public Boolean uploadFile(String fileName, String graphURI) {
 		File f = new File(fileName);
 		return uploadFile(f, graphURI);
 	}
 
-
+	/**
+	 * Schließt die interne java.sql.Connection
+	 * 
+	 * @return true wenn erfolgreich, andernfalls false
+	 */
 	public Boolean close() {
 		try {
 			this.con.close();
@@ -164,11 +244,19 @@ public class CurlConnection extends CurlProcess implements Connection {
 		}
 	}
 
+	/**
+	 * Basierend auf der internen java.sql.Connection (also über den Endpoint)
+	 * wird eine Select Anfrage gestellt
+	 * (unabhängig von autoCommit)
+	 * 
+	 * @param query Auszuführende Query
+	 * @return ResultSet mit Ergebnissen der Query, bei Fehler null
+	 */
 	public ResultSet select(String query){
 		try{
 			Statement stm = this.con.createStatement();
 			ResultSet rs = stm.executeQuery(query);
-			stm.close();
+//			stm.close();
 			return rs;
 		}
 		catch(SQLException e){
@@ -178,10 +266,18 @@ public class CurlConnection extends CurlProcess implements Connection {
 	}
 
 	
-	/*
-	 *TODO  Update and execute must be written in Curl! Update must ask if autoCommit
+	/**
+	 * Basierend auf der internen java.sql.Connection (also über den Endpoint)
+	 * wird ein SPARQL-UPDATE Befehl ausgeführt
+	 * (unabhängig von autoCommit und uploadType )
+	 * 
+	 * @param query Auszuführende Query
+	 * @return true falls erfolgreich, andernfalls false
 	 */
 	public Boolean update(String query) {
+		/*
+		 *TODO  Update and execute must be written in Curl! Update must ask if autoCommit
+		 */
 		try {
 			Statement stm = this.con.createStatement();
 			stm.executeUpdate(query);
@@ -193,6 +289,14 @@ public class CurlConnection extends CurlProcess implements Connection {
 		}
 	}
 
+	/**
+	 * Basierend auf der internen java.sql.Connection (also über den Endpoint)
+	 * wird ein SPARQL Befehl ausgeführt
+	 * (unabhängig von autoCommit und uploadType )
+	 * 
+	 * @param query Auszuführende Query
+	 * @return ResultSet falls Select anfrage, andernfalls null (ebenso bei Fehler)
+	 */
 	public ResultSet execute(String query) {
 		try {
 			Statement stm = this.con.createStatement();
@@ -206,9 +310,16 @@ public class CurlConnection extends CurlProcess implements Connection {
 		}
 	}
 
+	/**
+	 * Löscht den angegeben Graphen im TripleStore
+	 * 
+	 * @param graphURI
+	 * @return true falls erfolgreich, andernfalls false
+	 */
 	public Boolean dropGraph(String graphURI) {
 		this.dropGraphs.add(graphURI);
 		if(this.autoCommit){
+			//TODO ändern!!!
 			this.beginTransaction();
 			Boolean ret = this.commit();
 			this.endTransaction();
@@ -220,11 +331,21 @@ public class CurlConnection extends CurlProcess implements Connection {
 		return null;
 	}
 
-	
+	/**
+	 * Setzt ob alle nicht autoCommit unabhängigen Befehle sofort ausgeführt werden sollen 
+	 * oder erst bei endTransaction()
+	 * (EXPERIMENTAL!!!!)
+	 * 
+	 * @param autoCommit Setzt autoCommit  
+	 */
 	public void autoCommit(Boolean autoCommit) {
 		this.autoCommit = autoCommit;
 	} 
 
+	/**
+	 * Beginnt die Transaction wenn autoCommit off
+	 * (EXPERIMENTAL!!!!)
+	 */
 	@Override
 	public void beginTransaction() {
 		this.transaction = true;		
@@ -254,7 +375,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 			catch(Exception e){
 			}
 			if(this.transactionInput!= null){
-				curl = this.curlCommand.replace("$GRAPH_URI", 
+				curl = this.curlCommand.replace("$GRAPH-URI", 
 							graphURI)
 						.replace("$FILE", file.getAbsolutePath()+File.separator+file.getName())
 						.replace("$CONTENT-TYPE", this.contentType)
@@ -283,6 +404,11 @@ public class CurlConnection extends CurlProcess implements Connection {
 		return false;
 	}
 	
+	/**
+	 * Beendet Transaktion und commitet geänderte Daten
+	 * (EXPERIMENTAL!!!)
+	 * 
+	 */
 	@Override
 	public void endTransaction() {
 		if(commit()){
@@ -290,6 +416,11 @@ public class CurlConnection extends CurlProcess implements Connection {
 		}
 	}
 
+	/**
+	 * Setzt die interne Connection
+	 * 
+	 * @param con java.sql.Connection zum Triplestore
+	 */
 	@Override
 	public void setConnection(java.sql.Connection con) {
 		this.con = con;

@@ -1,12 +1,29 @@
 package org.bio_gene.wookie.utils;
 
+/**
+ * Mapped RDF Files zu jeweiligen FileExtensions und umgekehrt
+ * 
+ * @author Felix Conrads
+ *
+ */
 public class FileExtensionToRDFContentTypeMapper {
 	
-	
+	/**
+	 * Alle unterstützten Extensions
+	 * 
+	 * @author Felix Conrads
+	 *
+	 */
 	public enum Extension{
 		ttl, rdf, nt, n3 
 	}
-	
+
+	/**
+	 * Alle unterstützten Content-Types
+	 * 
+	 * @author Felix Conrads
+	 *
+	 */
 	public enum ContentType{
 		RDF, TURTLE, NT, N3
 		
@@ -59,6 +76,14 @@ public class FileExtensionToRDFContentTypeMapper {
 		}
 	}
 	
+	/**
+	 * versucht zu ermitteln welches Format zur Extension
+	 * zugehörig ist.
+	 * Default: TXT
+	 * 
+	 * @param ext Die Extension zu welcher das Format ermittelt werden soll 
+	 * @return Format zur Extension (default: txt)
+	 */
 	public static String guessFileFormat(Extension ext){
 		switch(ext){
 		case ttl: 
@@ -74,7 +99,14 @@ public class FileExtensionToRDFContentTypeMapper {
 		}
 	}
 	
-	
+	/**
+	 * versucht zu ermitteln welches Content-Type zur Extension
+	 * zugehörig ist.
+	 * Default: text/plain
+	 * 
+	 * @param ext Die Extension zu welcher das Content-Type ermittelt werden soll 
+	 * @return Content-Type zur Extension (default: text/plain)
+	 */
 	public static String guessContentType(Extension ext){
 		switch(ext){
 			case ttl: 
@@ -91,6 +123,14 @@ public class FileExtensionToRDFContentTypeMapper {
 		
 	}
 	
+	/**
+	 * versucht zu ermitteln welche Extension zum Content-Type
+	 * zugehörig ist.
+	 * Default: txt
+	 * 
+	 * @param ext Content-Type zu welcher die Extension ermittelt werden soll 
+	 * @return Extension zur Content-Type (default: txt)
+	 */
 	public static String guessFileExtension(String contentType){
 		switch(TranslateContentTypeToEnum(contentType)){
 		case TURTLE:
@@ -107,6 +147,14 @@ public class FileExtensionToRDFContentTypeMapper {
 		}
 	}
 	
+	/**
+	 * versucht zu ermitteln welche Extension zum Format 
+	 * zugehörig ist.
+	 * Default: txt
+	 * 
+	 * @param ext Format zu welcher die Extension ermittelt werden soll 
+	 * @return Extension zum Format (default: txt)
+	 */
 	public static String guessFileExtensionFromFormat(String format){
 		switch(format.toUpperCase()){
 		case "TURTLE":

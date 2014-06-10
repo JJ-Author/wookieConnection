@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wookie xmlns="http://bio-gene.org/Config"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<databases main="virtuoso">
+		<database id="curl" type="curl">
+			<endpoint uri="localhost/sparql" />
+			<user value="dba" />
+			<pwd value="dba" />
+			<curl-url url="http://localhost/sparql-graph-crud-auth" />
+			<curl-command command="C:\Program Files (x86)\Git\bin\curl --digest --user $USER:$PWD --url '$CURL-URL?graph-uri=$GRAPH-URI' -X $UPLOAD-TYPE -T $FILE"/>	
+			<curl-drop command="curl -X DELETE $GRAPH-URI --url '$CURL-URL'"/>
+			<curl-update command="curl -i -d '$UPDATE' -u '$USER:$PWD' -H 'Content-Type: application/sparql-query'"/>
+		</database>
+		<database id="implcurl" type="implcurl">
+			<endpoint uri="localhost/sparql" />
+			<user value="dba" />
+			<pwd value="dba" />
+			<auth-type type="DIGEST"/>
+		</database>
+		<database id="impl" type="impl">
+			<endpoint uri="localhost/sparql" />
+			<user value="dba" />
+			<pwd value="dba" />
+		</database>
+	</databases>
+</wookie>
