@@ -11,12 +11,23 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.protocol.ClientContext;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.HttpContext;
 import org.apache.jena.riot.RDFLanguages;
+import org.apache.jena.riot.WebContent;
+import org.apache.jena.riot.web.HttpOp;
 import org.bio_gene.wookie.utils.CurlProcess;
 import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
 import org.bio_gene.wookie.utils.GraphHandler;
@@ -26,6 +37,12 @@ import org.lexicon.jdbc4sparql.SPARQLConnection;
 import com.hp.hpl.jena.graph.Graph;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.sparql.modify.UpdateProcessRemoteForm;
+import com.hp.hpl.jena.sparql.modify.request.UpdateLoad;
+import com.hp.hpl.jena.update.UpdateExecutionFactory;
+import com.hp.hpl.jena.update.UpdateFactory;
+import com.hp.hpl.jena.update.UpdateProcessor;
+import com.hp.hpl.jena.update.UpdateRequest;
 
 /**
  * Connection basierend auf Curl Prozessen (auch anderen Scripten).
@@ -34,6 +51,8 @@ import com.hp.hpl.jena.rdf.model.ModelFactory;
  *
  */
 public class CurlConnection extends CurlProcess implements Connection {
+
+	private int queryTimeout=180;
 
 	private String curlCommand;
 	private String curlDrop;
@@ -47,9 +66,16 @@ public class CurlConnection extends CurlProcess implements Connection {
 	private Boolean transaction = false;
 	private Graph transactionInput;
 	private Graph transactionDelete;
-	private Collection<String> dropGraphs;
+	private Collection<String> dropGraphs = new HashSet<String>();
 	private UploadType type =  UploadType.POST;
 	private ModelUnionType mut = ModelUnionType.add;
+	private String endpoint;
+	private String user;
+	private String pwd;
+	private String updateEndpoint;
+
+	private int numberOfTriples;
+
 	
 	/**
 	 * Setzt ob die internen Graphen (bei autoCommit false) hinzugefügt oder vereinigt werden soll
@@ -72,7 +98,8 @@ public class CurlConnection extends CurlProcess implements Connection {
 	 * @param curlUpdate
 	 */
 	public CurlConnection(String endpoint, String user,String password, String curlCommand,String curlDrop, 
-			String curlURL, String curlUpdate){
+			String curlURL, String curlUpdate, String updateEndpoint, int queryTimeout){
+		this.queryTimeout = queryTimeout;
 		Logger log = Logger.getLogger(this.getClass().getName());
 		log.setLevel(Level.FINE);
 		this.setLogger(log);
@@ -81,6 +108,11 @@ public class CurlConnection extends CurlProcess implements Connection {
 		this.curlDrop = curlDrop;
 		this.curlURL = curlURL!=null? curlURL : endpoint;
 		this.curlUpdate = curlUpdate;
+		this.endpoint = "http://"+endpoint;
+		this.updateEndpoint = "http://"+updateEndpoint;
+		this.user = user;
+		this.pwd = password;
+		
 	}
 	
 	/**
@@ -126,14 +158,14 @@ public class CurlConnection extends CurlProcess implements Connection {
 	}
 	
 	
-	private Boolean uploadFileIntern(File file, String graphURI){
+	private Long uploadFileIntern(File file, String graphURI){
 		if(!file.exists()){
 			try{
 				throw new FileNotFoundException();
 			}
 			catch(FileNotFoundException e){
 				LogHandler.writeStackTrace(log, e, Level.SEVERE);
-				return false;
+				return -1L;
 			}
 		}
 		String absFile = file.getAbsolutePath();
@@ -157,7 +189,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 				this.transactionInput = input.getGraph();
 			} catch (FileNotFoundException e) {
 				LogHandler.writeStackTrace(log, e, Level.SEVERE);
-				return false;
+				return -1L;
 			}
 			return null;
 		}
@@ -180,7 +212,12 @@ public class CurlConnection extends CurlProcess implements Connection {
 		else if(this.type.equals(UploadType.PUT)){
 			command = command.replace("$UPLOAD-TYPE", " ");
 		}
-		return this.process(command);
+		long a = new Date().getTime();
+		if(!this.process(command)){
+			return -1L;
+		}
+		long b = new Date().getTime();
+		return b-a;
 	}
 	
 	
@@ -190,7 +227,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 	 * @param file Das hochzuladene File
 	 * @return true wenn erfolgreich, false falls misserfolg, null falls autoCommit gleich false 
 	 */
-	public Boolean uploadFile(File file) {
+	public Long uploadFile(File file) {
 		return uploadFileIntern(file, ((SPARQLConnection)this.con).getDefaultGraphs().get(0));
 	}
 
@@ -200,7 +237,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 	 * @param fileName Name der Hochzuladenen Datei
 	 * @return true wenn erfolgreich, false falls misserfolg, null falls autoCommit gleich false 
 	 */
-	public Boolean uploadFile(String fileName) {
+	public Long uploadFile(String fileName) {
 		File f = new File(fileName);
 		return uploadFile(f);
 	}
@@ -212,7 +249,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 	 * @param graphURI Graph in den geladen werden soll
 	 * @return true wenn erfolgreich, false falls misserfolg, null falls autoCommit gleich false 
 	 */
-	public Boolean uploadFile(File file, String graphURI) {
+	public Long uploadFile(File file, String graphURI) {
 		return uploadFileIntern(file, graphURI);
 	}
 
@@ -223,7 +260,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 	 * @param graphURI Graph in den geladen werden soll
 	 * @return true wenn erfolgreich, false falls misserfolg, null falls autoCommit gleich false 
 	 */
-	public Boolean uploadFile(String fileName, String graphURI) {
+	public Long uploadFile(String fileName, String graphURI) {
 		File f = new File(fileName);
 		return uploadFile(f, graphURI);
 	}
@@ -243,6 +280,11 @@ public class CurlConnection extends CurlProcess implements Connection {
 			return false;
 		}
 	}
+	
+	public ResultSet select(String query){
+		return select(query, this.queryTimeout);
+	}
+	
 
 	/**
 	 * Basierend auf der internen java.sql.Connection (also über den Endpoint)
@@ -252,9 +294,10 @@ public class CurlConnection extends CurlProcess implements Connection {
 	 * @param query Auszuführende Query
 	 * @return ResultSet mit Ergebnissen der Query, bei Fehler null
 	 */
-	public ResultSet select(String query){
+	public ResultSet select(String query, int queryTimeout){
 		try{
 			Statement stm = this.con.createStatement();
+			stm.setQueryTimeout(queryTimeout);
 			ResultSet rs = stm.executeQuery(query);
 //			stm.close();
 			return rs;
@@ -274,21 +317,88 @@ public class CurlConnection extends CurlProcess implements Connection {
 	 * @param query Auszuführende Query
 	 * @return true falls erfolgreich, andernfalls false
 	 */
-	public Boolean update(String query) {
+	public Long update(String query) {
 		/*
 		 *TODO  Update and execute must be written in Curl! Update must ask if autoCommit
 		 */
 		try {
-			Statement stm = this.con.createStatement();
-			stm.executeUpdate(query);
-			stm.close();
-			return true;
-		} catch (SQLException e) {
+			return ownUpdate(query);
+		} catch (Exception e) {
 			LogHandler.writeStackTrace(log, e, Level.SEVERE);
-			return false;
+			return -1L;
 		}
 	}
+	
+	
+	public long loadUpdate(String filename, String graphURI){
+		HttpContext httpContext = new BasicHttpContext();
+		CredentialsProvider provider = new BasicCredentialsProvider();
+		provider.setCredentials(new AuthScope(AuthScope.ANY_HOST,
+		    AuthScope.ANY_PORT), new UsernamePasswordCredentials(user, pwd));
+		httpContext.setAttribute(ClientContext.CREDS_PROVIDER, provider);
 
+//		GraphStore graphStore = GraphStoreFactory.create() ;
+		UpdateRequest request = UpdateFactory.create();
+		request.add(new UpdateLoad(filename, graphURI));
+		UpdateProcessor processor = UpdateExecutionFactory
+			    .createRemoteForm(request, updateEndpoint);
+			((UpdateProcessRemoteForm)processor).setHttpContext(httpContext);
+			long a = new Date().getTime();
+			processor.execute();
+			long b = new Date().getTime();
+		return b-a;
+	}
+	
+
+	private Long ownUpdate(String query){
+		HttpContext httpContext = new BasicHttpContext();
+		
+		CredentialsProvider provider = new BasicCredentialsProvider();
+		provider.setCredentials(new AuthScope(AuthScope.ANY_HOST,
+		    AuthScope.ANY_PORT), new UsernamePasswordCredentials(user, pwd));
+		httpContext.setAttribute(ClientContext.CREDS_PROVIDER, provider);
+
+//		GraphStore graphStore = GraphStoreFactory.create() ;
+		if(this.curlUpdate!=null && !this.curlUpdate.isEmpty()){
+			try {
+				long a = new Date().getTime();
+				process(this.curlUpdate
+					.replace("$USER", user)
+					.replace("$PWD", pwd)
+					.replace("$UPDATE", URLEncoder.encode(query, "UTF-8"))
+					.replace("$CONTENT-TYPE", "application/x-www-form-urlencoded")
+					.replace("$MIME-TYPE", "application/x-www-form-urlencoded")
+					.replace("$CURL-URL", this.curlURL)
+					.replace("$ENDPOINT", this.updateEndpoint));
+				long b = new Date().getTime();
+				return b-a;
+			} catch (UnsupportedEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return -1L;
+			}
+		}else{
+		UpdateRequest request = UpdateFactory.create(query.replace("\n", " "));
+		UpdateProcessor processor = UpdateExecutionFactory
+			    .createRemoteForm(request, updateEndpoint);
+			((UpdateProcessRemoteForm)processor).setHttpContext(httpContext);
+			long a = new Date().getTime();
+			processor.execute();
+			long b = new Date().getTime();
+			return b-a;
+		}
+//		String ep=updateEndpoint;
+////		if (query != null && !query.equals("")) {
+////            ep = endpoint.contains("?") ? endpoint + "&" + URLEncoder.encode(query): endpoint + "?" + URLEncoder.encode(query);
+////     
+//			HttpOp.execHttpPost(ep, "application/x-www-form-urlencoded", query.replace("\n", " ") , null, httpContext, null) ;
+
+	}
+	
+	public ResultSet execute(String query) {
+		return execute(query, this.queryTimeout);
+	}
+	
 	/**
 	 * Basierend auf der internen java.sql.Connection (also über den Endpoint)
 	 * wird ein SPARQL Befehl ausgeführt
@@ -297,12 +407,14 @@ public class CurlConnection extends CurlProcess implements Connection {
 	 * @param query Auszuführende Query
 	 * @return ResultSet falls Select anfrage, andernfalls null (ebenso bei Fehler)
 	 */
-	public ResultSet execute(String query) {
+	public ResultSet execute(String query, int queryTimeout) {
 		try {
 			Statement stm = this.con.createStatement();
+			stm.setQueryTimeout(queryTimeout);
 			if(stm.execute(query)){
 				return stm.getResultSet();
 			}
+			stm.close();
 			return null;
 		} catch (SQLException e) {
 			LogHandler.writeStackTrace(log, e, Level.SEVERE);
@@ -316,16 +428,19 @@ public class CurlConnection extends CurlProcess implements Connection {
 	 * @param graphURI
 	 * @return true falls erfolgreich, andernfalls false
 	 */
-	public Boolean dropGraph(String graphURI) {
-		this.dropGraphs.add(graphURI);
+	public Long dropGraph(String graphURI) {
+//		this.dropGraphs.add(graphURI);
 		if(this.autoCommit){
 			//TODO ändern!!!
-			this.beginTransaction();
-			Boolean ret = this.commit();
-			this.endTransaction();
-			if(ret){
-				this.dropGraphs.clear();
-			}
+//			String curl="";
+////			for(String graph : this.dropGraphs){
+//				curl = this.curlDrop.replace("$GRAPH-URI", graphURI).replace("$CURL-URL", curlURL);
+////			}
+//			Boolean ret = process(curl);
+			Long  ret = update("DROP SILENT GRAPH <"+graphURI+">");
+//			if(ret){
+//				this.dropGraphs.clear();
+//			}
 			return ret;
 		}
 		return null;
@@ -356,6 +471,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 		if(this.transaction){
 			String curl = "";
 			File file = new File(UUID.randomUUID().toString());
+			try{
 			Model m = ModelFactory.createModelForGraph(this.transactionInput);
 			try {
 				file.createNewFile();
@@ -368,6 +484,7 @@ public class CurlConnection extends CurlProcess implements Connection {
 				LogHandler.writeStackTrace(log, e, Level.SEVERE);
 				return false;
 			}
+			}catch(NullPointerException e){}
 			String graphURI ="";
 			try{
 				graphURI = ((SPARQLConnection) this.con).getDefaultGraphs().get(0);
@@ -426,6 +543,51 @@ public class CurlConnection extends CurlProcess implements Connection {
 		this.con = con;
 		
 	}
+
+	@Override
+	public String getEndpoint() {
+		return endpoint;
+	}
+
+	@Override
+	public void setEndpoint(String endpoint) {
+		this.endpoint =endpoint;
+	}
+
+	@Override
+	public String getUser() {
+		return user;
+	}
+
+	@Override
+	public void setUser(String user) {
+		this.user =user;
+	}
+
+
+	@Override
+	public void setPwd(String pwd) {
+		this.pwd = pwd;
+	}
+
+	@Override
+	public void setUpdateEndpoint(String updateEndpoint) {
+		this.updateEndpoint = updateEndpoint;
+	}
 	
+	
+	
+
+	@Override
+	public void setTriplesToUpload(long count) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public long getTriplesToUpload() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
 
 }

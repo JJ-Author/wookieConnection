@@ -26,6 +26,11 @@
 			<version>2.11.1</version>
 		</dependency>
 		<dependency>
+			<groupId>org.apache.jena</groupId>
+			<artifactId>jena-jdbc-driver-remote</artifactId>
+			<version>1.1.0</version>
+		</dependency>
+		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>3.8.1</version>
@@ -49,27 +54,22 @@
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
-			<version>4.0.3</version>
+			<version>4.2.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpcore</artifactId>
-			<version>4.0.1</version>
+			<version>4.2.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpmime</artifactId>
-			<version>4.0.3</version>
+			<version>4.2.3</version>
 		</dependency>
 		<dependency>
 			<groupId>com.hp.hpl.jena</groupId>
 			<artifactId>iri</artifactId>
 			<version>0.8</version>
-		</dependency>
-		<dependency>
-			<groupId>org.xenei</groupId>
-			<artifactId>jdbc4sparql</artifactId>
-			<version>0.1.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.lucene</groupId>
@@ -138,28 +138,25 @@
 			<version>3.1</version>
 		</dependency>
 		<dependency>
-			<groupId>org.clapper</groupId>
-			<artifactId>javautil</artifactId>
-			<version>3.1.1</version>
-		</dependency>
-		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpcore-nio</artifactId>
 			<version>4.1</version>
 		</dependency>
+
+		<dependency>
+			<groupId>virtuoso.jena.driver</groupId>
+			<artifactId>virtuoso</artifactId>
+			<version>2.10.0</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/src/main/resources/lib/mavenDependencies/virtuoso-2.10.0.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-exec</artifactId>
+			<version>1.1</version>
+		</dependency>
 	</dependencies>
 	<repositories>
-		<repository>
-			<releases>
-				<enabled>true</enabled>
-				<updatePolicy>always</updatePolicy>
-				<checksumPolicy>warn</checksumPolicy>
-			</releases>
-			<id>clapper-org-maven-repo</id>
-			<name>org.clapper Maven Repo</name>
-			<url>http://maven.clapper.org/</url>
-			<layout>default</layout>
-		</repository>
 		<repository>
 			<id>repository.jboss.org-public</id>
 			<name>JBoss repository</name>
@@ -171,4 +168,41 @@
 			<url>http://maven.bio-gene.org/nexus/content/groups/public/</url>
 		</repository>
 	</repositories>
+	<build>
+	<resources> 
+        <resource>
+            <directory>src/main/resources</directory>
+            <excludes>
+                <exclude>**/*.jar</exclude>
+            </excludes>
+            <filtering>false</filtering>
+        </resource>
+     </resources> 
+	<plugins>
+	
+	<plugin>
+              <artifactId>maven-assembly-plugin</artifactId>
+              <configuration>
+                  <archive>
+                      <manifest>
+                      </manifest>
+                  </archive>
+              </configuration>
+              <executions>
+                  <execution>
+                      <id>make-my-jar-with-dependencies</id>
+                      <phase>package</phase>
+                      <goals>
+                          <goal>single</goal>
+                      </goals>
+                      <configuration>
+              <descriptors>
+                <descriptor>dist.xml</descriptor>
+              </descriptors>
+            </configuration>
+                  </execution>
+              </executions>
+          </plugin>
+		</plugins>
+	</build>
 </project>

@@ -37,7 +37,7 @@ public class FileExtensionToRDFContentTypeMapper {
 			return ContentType.TURTLE;
 		case "text/turtle":
 			return ContentType.TURTLE;
-		case "text/plain":
+		case "application/n-triples":
 			return ContentType.NT;
 		case "text/rdf+n3":
 			return ContentType.N3;
@@ -53,7 +53,7 @@ public class FileExtensionToRDFContentTypeMapper {
 		case TURTLE:
 			return "application/x-turtle";
 		case NT:
-			return "text/plain";
+			return "application/n-triples";
 		case N3:
 			return "text/rdf+n3";
 		default:

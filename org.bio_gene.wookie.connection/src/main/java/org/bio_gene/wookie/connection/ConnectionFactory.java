@@ -5,11 +5,13 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.jena.jdbc.remote.RemoteEndpointDriver;
 import org.bio_gene.wookie.utils.ConfigParser;
 import org.bio_gene.wookie.utils.LogHandler;
 import org.lexicon.jdbc4sparql.SPARQLConnection;
@@ -114,6 +116,22 @@ public class ConnectionFactory {
 			cp.setNode((Element) db);
 			ret.put("endpoint",
 					cp.getElementAt("endpoint", 0).getAttribute("uri"));
+			
+			cp.setNode((Element) db);
+			try{
+				ret.put("queryTimeout",
+						cp.getElementAt("queryTimeout", 0).getAttribute("value"));
+			}catch(Exception e){
+				ret.put("queryTimeout", "180");
+			}
+			cp.setNode((Element) db);
+			try{
+				ret.put("update-endpoint", cp.getElementAt("update-endpoint", 0)
+						.getAttribute("uri"));
+			}
+				catch(Exception e){
+					ret.put("update-endpoint", ret.get("endpoint"));
+				}
 			cp.setNode((Element) db);
 			try {
 				ret.put("user", cp.getElementAt("user", 0)
@@ -132,9 +150,6 @@ public class ConnectionFactory {
 				break;
 			case IMPL:
 				break;
-			case IMPLCURL:
-				ret.putAll(getImplCurlParams((Node) db));
-				break;
 			}
 			params.putAll(ret);
 		} catch (SAXException | IOException | ParserConfigurationException e) {
@@ -144,33 +159,7 @@ public class ConnectionFactory {
 		return params;
 	}
 
-	@SuppressWarnings("deprecation")
-	private static Map<String, String> getImplCurlParams(Node db) {
-		try {
-			ConfigParser cp = ConfigParser.getParser(db);
-			HashMap<String, String> ret = new HashMap<String, String>();
-			try {
-				ret.put("auth-type", cp.getElementAt("auth-type", 0)
-						.getAttribute("type"));
-			} catch (Exception e) {
-				cp.setNode((Element) db);
-				ret.put("auth-type", ImplCurlConnection.AuthType.NONE.name());
-			}
-			cp.setNode((Element) db);
-			ret.put("curl-url",
-					cp.getElementAt("curl-url", 0).getAttribute("url"));
-			cp.setNode((Element) db);
-			NodeList nl = cp.getNodeList("property");
-			for (int i = 0; i < nl.getLength(); i++) {
-				Element e = (Element) nl.item(i);
-				ret.put(e.getAttribute("name"), e.getAttribute("value"));
-			}
-			return ret;
-		} catch (ParserConfigurationException | SAXException | IOException e) {
-			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
-			return null;
-		}
-	}
+
 
 	private static Map<String, String> getCurlParams(Node db) {
 		try {
@@ -185,15 +174,22 @@ public class ConnectionFactory {
 						.getAttribute("uri"));
 			}
 			cp.setNode((Element) db);
-			ret.put("curl-update", cp.getElementAt("curl-update", 0)
-					.getAttribute("command"));
+			try{
+				ret.put("curl-update", cp.getElementAt("curl-update", 0)
+						.getAttribute("command"));
+			}
+			catch(Exception e){}
 			cp.setNode((Element) db);
+			try{
 			ret.put("curl-drop",
 					cp.getElementAt("curl-drop", 0).getAttribute("command"));
+			}
+			catch(Exception e){}
 			cp.setNode((Element) db);
 			ret.put("curl-command", cp.getElementAt("curl-command", 0)
 					.getAttribute("command"));
 			cp.setNode((Element) db);
+			
 			return ret;
 		} catch (ParserConfigurationException | SAXException | IOException e) {
 			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
@@ -292,23 +288,14 @@ public class ConnectionFactory {
 			return createCurlConnection(params.get("endpoint"),
 					params.get("user"), params.get("pwd"),
 					params.get("curl-command"), params.get("curl-drop"),
-					params.get("curl-url"), params.get("curl-update"));
+					params.get("curl-url"), params.get("curl-update"),
+					params.get("update-endpoint"), 
+					Integer.valueOf(params.get("queryTimeout")));
 		case IMPL:
 			return createImplConnection(params.get("endpoint"),
-					params.get("user"), params.get("pwd"));
-		case IMPLCURL:
-			HashMap<String, String> props = new HashMap<String, String>();
-			for (String key : params.keySet()) {
-				if (key.equals("endpoint") || key.equals("user")
-						|| key.equals("pwd") || key.equals("auth-type")
-						|| key.equals("curl-url")) {
-					continue;
-				}
-				props.put(key, params.get(key));
-			}
-			return createImplCurlConnection(params.get("endpoint"),
-					params.get("auth-type"), params.get("user"),
-					params.get("pwd"), params.get("curl-url"), props);
+					params.get("user"), params.get("pwd"), params.get("update-endpoint"), 
+					Integer.valueOf(params.get("queryTimeout")));
+		
 		}
 		return null;
 	}
@@ -343,18 +330,29 @@ public class ConnectionFactory {
 	 */
 	public static Connection createCurlConnection(String endpoint, String user,
 			String password, String curlCommand, String curlDrop,
-			String curlURL, String curlUpdate) {
+			String curlURL, String curlUpdate, String updateEndpoint, int queryTimeout) {
 		if (curlURL == null) {
 			curlURL = endpoint;
 		}
+		if(user==null)
+			user="";
+		if(endpoint==null)
+			endpoint="";
+		if(curlURL==null)
+			curlURL="";
+		if(password==null)
+			password="";
+		if(updateEndpoint==null)
+			updateEndpoint = endpoint;
+		
 		curlCommand = curlCommand.replace("$USER", user)
 				.replace("$PWD", password).replace("$ENDPOINT", endpoint)
 				.replace("$CURL-URL", curlURL);
 		curlDrop = curlDrop.replace("$USER", user).replace("$PWD", password)
 				.replace("$ENDPOINT", endpoint).replace("$CURL-URL", curlURL);
 		Connection con = new CurlConnection(endpoint, user, password,
-				curlCommand, curlDrop, curlURL, curlUpdate);
-		con.setConnection(connect(endpoint, ConnectionFactory.driver, user,
+				curlCommand, curlDrop, curlURL, curlUpdate, updateEndpoint, queryTimeout);
+		con.setConnection(connect(endpoint, updateEndpoint, ConnectionFactory.driver, user,
 				password));
 		return con;
 	}
@@ -386,9 +384,9 @@ public class ConnectionFactory {
 	 */
 	public static Connection createCurlConnection(String endpoint, String user,
 			String password, String curlCommand, String curlDrop,
-			String curlUpdate) {
+			String curlUpdate, String updateEndpoint, int queryTimeout) {
 		return ConnectionFactory.createCurlConnection(endpoint, user, password,
-				curlCommand, curlDrop, endpoint, curlUpdate);
+				curlCommand, curlDrop, endpoint, curlUpdate, updateEndpoint, queryTimeout);
 	}
 
 	/**
@@ -417,10 +415,10 @@ public class ConnectionFactory {
 	 */
 	public static Connection createCurlConnection(String endpoint,
 			String curlCommand, String curlDrop, String curlURL,
-			String curlUpdate) {
+			String curlUpdate, String updateEndpoint, int queryTimeout) {
 
 		return ConnectionFactory.createCurlConnection(endpoint, null, null,
-				curlCommand, curlDrop, curlURL, curlUpdate);
+				curlCommand, curlDrop, curlURL, curlUpdate, updateEndpoint, queryTimeout);
 	}
 
 	/**
@@ -445,119 +443,14 @@ public class ConnectionFactory {
 	 * @return Connection zum angebene Triplestore
 	 */
 	public static Connection createCurlConnection(String endpoint,
-			String curlCommand, String curlDrop, String curlUpdate) {
+			String curlCommand, String curlDrop, String curlUpdate, String updateEndpoint, int queryTimeout) {
 
 		return ConnectionFactory.createCurlConnection(endpoint, null, null,
-				curlCommand, curlDrop, endpoint, curlUpdate);
+				curlCommand, curlDrop, endpoint, curlUpdate, updateEndpoint, queryTimeout);
 	}
 
-	/**
-	 * Erstellt eine Connection mit eigener internem Curl Prozess mit den
-	 * gegeben Parametern
-	 * 
-	 * @deprecated  use {@link #createImplConnection(endpoint, user, pwd)}
-	 * 
-	 * @param endpoint
-	 *            SPARQL-endpoint vom Triplestore ohne "http://"
-	 * @param authType
-	 *            Authentifizierung die benutzt werden soll {BASIC|DIGEST}
-	 * @param user
-	 *            Username des Triplestore users
-	 * @param password
-	 *            password zum user
-	 * @param props
-	 *            Jeder curl Parameter in Form "name":"wert" den man setzen
-	 *            möchte
-	 * @return Connection zum angegeben Triplestore
-	 */
-	public static Connection createImplCurlConnection(String endpoint,
-			String authType, String user, String password, String curlURL,
-			HashMap<String, String> props) {
-		Connection con = new ImplCurlConnection(curlURL, user, password,
-				authType, props);
-		con.setConnection(connect(endpoint, ConnectionFactory.driver, user,
-				password));
-		return con;
-	}
 
-	/**
-	 * Erstellt eine Connection mit eigener internem Curl Prozess mit den
-	 * gegeben Parametern Nutzt standardauthentifizierung (BASIC)
-	 * @deprecated  use {@link #createImplConnection(endpoint, user, pwd)}
-	 * 
-	 * @param endpoint
-	 *            SPARQL-endpoint vom Triplestore ohne "http://"
-	 * @param user
-	 *            Username des Triplestore users
-	 * @param password
-	 *            password zum user
-	 * @param props
-	 *            Jeder curl Parameter in Form "name":"wert" den man setzen
-	 *            möchte
-	 * @return Connection zum angegeben Triplestore
-	 */
 
-	public static Connection createImplCurlConnection(String endpoint,
-			String user, String password, String curlURL,
-			HashMap<String, String> props) {
-		return createImplCurlConnection(endpoint, "BASIC", user, password,
-				curlURL, props);
-	}
-
-	/**
-	 * Erstellt eine Connection mit eigener internem Curl Prozess mit den
-	 * gegeben Parametern
-	 * @deprecated  use {@link #createImplConnection(endpoint, user, pwd)}
-	 * 
-	 * @param endpoint
-	 *            SPARQL-endpoint vom Triplestore ohne "http://"
-	 * @param authType
-	 *            Authentifizierung die benutzt werden soll {BASIC|DIGEST}
-	 * @param user
-	 *            Username des Triplestore users
-	 * @param password
-	 *            password zum user
-	 * @return Connection zum angegeben Triplestore
-	 */
-	public static Connection createImplCurlConnection(String endpoint,
-			String authType, String user, String password, String curlURL) {
-		return createImplCurlConnection(endpoint, authType, user, password,
-				curlURL, null);
-	}
-
-	/**
-	 * Erstellt eine Connection mit eigener internem Curl Prozess mit den
-	 * gegeben Parametern Nutzt standardauthentifizierung (BASIC)
-	 * @deprecated  use {@link #createImplConnection(endpoint, user, pwd)}
-	 * 
-	 * @param endpoint
-	 *            SPARQL-endpoint vom Triplestore ohne "http://"
-	 * @param user
-	 *            Username des Triplestore users
-	 * @param password
-	 *            password zum user
-	 * @return Connection zum angegeben Triplestore
-	 */
-	public static Connection createImplCurlConnection(String endpoint,
-			String user, String password, String curlURL) {
-		return createImplCurlConnection(endpoint, "BASIC", user, password,
-				curlURL, null);
-	}
-
-	/**
-	 * Erstellt eine Connection mit eigener internem Curl Prozess mit den
-	 * gegeben Parametern
-	 * @deprecated  use {@link #createImplConnection(endpoint)}
-	 * 
-	 * @param endpoint
-	 *            SPARQL-endpoint vom Triplestore ohne "http://"
-	 * @return Connection zum angegeben Triplestore
-	 */
-	public static Connection createImplCurlConnection(String endpoint,
-			String curlURL) {
-		return createImplCurlConnection(endpoint, null, null, null, curlURL,
-				null);
-	}
 
 	/**
 	 * Erstellt eine auf SPARQL Update basierende Connection
@@ -571,9 +464,15 @@ public class ConnectionFactory {
 	 * @return Connection zum gewünschten Triplestore
 	 */
 	public static Connection createImplConnection(String endpoint, String user,
-			String password) {
-		Connection con = new ImplConnection();
-		con.setConnection(connect(endpoint, ConnectionFactory.driver, user,
+			String password, String updateEndpoint, int queryTimeout) {
+		Connection con = new ImplConnection(queryTimeout);
+		con.setPwd(password);
+		con.setUser(user);
+		con.setEndpoint("http://"+endpoint);
+		if(updateEndpoint==null)
+			updateEndpoint = endpoint;
+		con.setUpdateEndpoint("http://"+updateEndpoint);
+		con.setConnection(connect(endpoint, updateEndpoint, ConnectionFactory.driver, user,
 				password));
 		return con;
 	}
@@ -585,8 +484,8 @@ public class ConnectionFactory {
 	 *            SPARQL Endpoint des Triplestores
 	 * @return Connection zum gewünschten Triplestore
 	 */
-	public static Connection createImplConnection(String endpoint) {
-		return createImplConnection(endpoint, null, null);
+	public static Connection createImplConnection(String endpoint, String updateEndpoint, int queryTimeout) {
+		return createImplConnection(endpoint, null, null, updateEndpoint, queryTimeout);
 	}
 
 	@SuppressWarnings("unused")
@@ -625,7 +524,7 @@ public class ConnectionFactory {
 		return con;
 	}
 
-	private static java.sql.Connection connect(String endpoint, String driver,
+	private static java.sql.Connection connect(String endpoint, String updateEndpoint, String driver,
 			String user, String pwd) {
 
 		// Dem DriverManager den Driver der DBMS geben.
@@ -635,30 +534,60 @@ public class ConnectionFactory {
 			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
 			return null;
 		}
-
+		
 		SPARQLConnection con = null;
+		try {
+//			java.sql.DriverManager.registerDriver(new J4SDriver());
+			RemoteEndpointDriver.register();
+		} catch (SQLException e1) {
+			LogHandler.writeStackTrace(Logger.getGlobal(), e1, Level.SEVERE);
+			return null;
+		}
 		java.sql.Connection internCon = null;
 		// Ist user und pwd nicht null, soll die Verbindung mit user und pwd
 		// geschehen
+		String url = jdbcPrefix+endpoint;
+		if(driver.equals("org.apache.jena.jdbc.remote.RemoteEndpointDriver")){
+			jdbcPrefix="jdbc:jena:remote:query=http://"+endpoint
+					+"&update=http://"+updateEndpoint;
+			url = jdbcPrefix;
+		}
+		
+		
+		
 		try {
 		if (user != null && pwd != null) {
 			// Verbindet mit der DB
-			internCon = DriverManager.getConnection(jdbcPrefix + endpoint, user,
-					pwd);
+			Properties info = new Properties();
+			info.put("user", user);
+			info.put("password", pwd);
+			if(driver.equals("org.apache.jena.jdbc.remote.RemoteEndpointDriver")){
+				url+="&user="+user+"&password="+pwd;
+			}
+			internCon = DriverManager.getConnection(url, info);
 			// Virtuoso braucht den Usernamen explizit und akzeptiert den nicht
 			// in der URI
-			con = (SPARQLConnection) internCon;
-			con.setUsername(user);
+			if(internCon instanceof SPARQLConnection){
+				con = (SPARQLConnection) internCon;
+				con.setUsername(user);
+			}
 		} else {
 			// Verbindet mit der DB
-			internCon = DriverManager.getConnection(jdbcPrefix + endpoint);
-			con = (SPARQLConnection) internCon;
+			internCon = DriverManager.getConnection(url);
+			if(internCon instanceof SPARQLConnection){
+				con = (SPARQLConnection) internCon;
+			}
 		}
 		} catch (SQLException e) {
 			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
 			return null;
 		}
-		return con;
+	
+		if(con!=null){
+			
+			return con;
+		}
+		return internCon;
 	}
 
 }

@@ -43,7 +43,7 @@ public interface Connection  {
 	 * @param file File welches in den TS geladen werden soll
 	 * @return true falls erfolgreich, andernfalls false
 	 */
-	public Boolean uploadFile(File file);
+	public Long uploadFile(File file);
 	/**
 	 * Läd ein File in den Triplestore
 	 * Ist ein Default-Graph gesetzt wird in diesen hochgeladen
@@ -51,7 +51,7 @@ public interface Connection  {
 	 * @param fileName Name der Datei welche hochgeladen werden soll
 	 * @return true falls erfolgreich, andernfalls false
 	 */
-	public Boolean uploadFile(String fileName);
+	public Long uploadFile(String fileName);
 	/**
 	 * Läd ein File in den Triplestore
 	 * Ist graphURI null und Default-Graph gesetzt wird in diesen hochgeladen
@@ -60,7 +60,7 @@ public interface Connection  {
 	 * @param graphURI Name des graphen in welches die Datei geladen werden soll
 	 * @return true falls erfolgreich, andernfalls false
 	 */
-	public Boolean uploadFile(File file, String graphURI);
+	public Long uploadFile(File file, String graphURI);
 	/**
 	 * Läd ein File in den Triplestore
 	 * Ist graphURI null und Default-Graph gesetzt wird in diesen hochgeladen
@@ -69,7 +69,9 @@ public interface Connection  {
 	 * @param graphURI Name des graphen in welches die Datei geladen werden soll
 	 * @return true falls erfolgreich, andernfalls false
 	 */
-	public Boolean uploadFile(String fileName, String graphURI);
+	public Long uploadFile(String fileName, String graphURI);
+	
+	public long loadUpdate(String filename, String graphURI);
 	
 	/**
 	 * EXPERIMENTAL!!!!
@@ -116,6 +118,8 @@ public interface Connection  {
 	 */
 	public Boolean close();
 	
+	public ResultSet select(String query, int queryTimeout) throws SQLException;
+	
 	/**
 	 * Führt ein SELECT-query aus
 	 * 
@@ -130,7 +134,10 @@ public interface Connection  {
 	 * @param query Query welche ausgeführt werden soll
 	 * @return true falls erfolgreich, andernfalls false
 	 */
-	public Boolean update(String query);
+	public Long update(String query);
+	
+	public ResultSet execute(String query, int queryTimeout);
+	
 	/**
 	 * Führt einen Query aus
 	 * 
@@ -145,7 +152,7 @@ public interface Connection  {
 	 * @param graphURI Name des Graphes welcher gedroppt werden soll
 	 * @return true falls erfolgreich, andernfalls false
 	 */
-	public Boolean dropGraph(String graphURI);
+	public Long dropGraph(String graphURI);
 	
 	/**
 	 * Setzt interne java.sql.Connection
@@ -154,5 +161,18 @@ public interface Connection  {
 	 */
 	public void setConnection(java.sql.Connection con);
 	
+	public String getEndpoint() ;
+
+	public void setEndpoint(String endpoint);
+
+	public String getUser() ;
+
+	public void setUser(String user) ;
+
+	public void setPwd(String pwd);
+	public void setUpdateEndpoint(String updateEndpoint);
 	
+	public void setTriplesToUpload(long count);
+	
+	public long getTriplesToUpload();
 }

@@ -1,15 +1,14 @@
 package org.bio_gene.wookie.utils;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecutor;
 
 /**
  * 
@@ -56,39 +55,40 @@ public class CurlProcess {
 	}
 	
 	protected Boolean process(String command){
-		File script;
-		String suffix = ".sh";
-		if(SystemUtils.IS_OS_WINDOWS){
-			suffix = ".bat";
-		}
-		if((script= setData(command, suffix))==null){
-			return false;
-		}
-		script.setExecutable(true);
-		//starts and wait for the process
-		ProcessBuilder pb = new ProcessBuilder("."+File.separator+script.getName());
-		pb.directory(new File(script.getAbsolutePath().replace(
-				script.getName(), File.separator)));
+//		File script;
+//		String suffix = ".sh";
+//		if(SystemUtils.IS_OS_WINDOWS){
+//			suffix = ".bat";
+//		}
+//		if((script= setData(command, suffix))==null){
+//			return false;
+//		}
+//		script.setExecutable(true);
+//		//starts and wait for the process
+//		ProcessBuilder pb = new ProcessBuilder("."+File.separator+script.getName());
+//		pb.directory(new File(script.getAbsolutePath().replace(
+//				script.getName(), File.separator)));
 		try {
-			   Process p = pb.start();
-			   p.waitFor();
-			   BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-			   StringBuilder builder = new StringBuilder();
-			   String line = null;
-			   while ( (line = br.readLine()) != null) {
-			      builder.append(line);
-			      builder.append(System.getProperty("line.separator"));
-			   }
-			   String result = builder.toString();
-			   log.info(result);
-
+			   log.info(command);
+			   CommandLine cmdLine = CommandLine.parse(command);
+			   DefaultExecutor exec = new DefaultExecutor();
+			   int ret = exec.execute(cmdLine);
+//			   Process p = pb.start();
+//			   StreamGrabber error = new StreamGrabber(p.getErrorStream(), Level.SEVERE, log);
+//			   StreamGrabber info = new StreamGrabber(p.getInputStream(), Level.INFO, log);
+//			   error.start();
+//			   info.start();
+//			   int ret = p.waitFor();
+			   log.info("Return value of Process: "+ret);
+//			   p = null;
+//			   Runtime.getRuntime().gc();
 			  
-		} catch (IOException | InterruptedException e) {
+		} catch (IOException e) {
 			LogHandler.writeStackTrace(log, e, Level.SEVERE);
 			return false;
 		}
 		//deletes the script
-		script.delete();
+//		script.delete();
 		return true;
 	}
 }

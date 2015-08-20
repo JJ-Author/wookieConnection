@@ -35,8 +35,11 @@ public class LogHandler {
 			FileHandler fh = fileMap.get(logName);
 			//Datei ./log/Connection.log mit Größe der max. Value eines Integer, max. 3 Dateien und append
 			if(fh == null){
-				fh = new FileHandler(file.getAbsolutePath()+File.separator+logName+".log", 4000, 3, true );
+				fh = new FileHandler(file.getAbsolutePath()+File.separator+logName+".log", 400000, 3, true );
 				fileMap.put(logName, fh);
+			}
+			else{
+				return true;
 			}
 			ConsoleHandler ch = new ConsoleHandler();
 			LogFormatter formatter = new LogFormatter();
@@ -66,10 +69,16 @@ public class LogHandler {
 	 * @param lvl
 	 */
 	public static void writeStackTrace(Logger log, Exception e, Level lvl){
-		StringWriter sw = new StringWriter();
-		PrintWriter pw = new PrintWriter(sw);
-		e.printStackTrace(pw);
-		log.log(lvl, sw.toString());
+		try{
+			StringWriter sw = new StringWriter();
+			PrintWriter pw = new PrintWriter(sw);
+			e.printStackTrace(pw);
+			log.log(lvl, sw.toString());
+		}catch(Exception e1){
+			if(e!=null)
+				System.out.println(e);
+			System.out.println(e1);
+		}
 	}
 	
 }

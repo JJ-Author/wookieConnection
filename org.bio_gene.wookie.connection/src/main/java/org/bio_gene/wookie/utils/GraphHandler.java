@@ -3,6 +3,7 @@ package org.bio_gene.wookie.utils;
 import com.hp.hpl.jena.graph.Graph;
 import com.hp.hpl.jena.graph.GraphUtil;
 import com.hp.hpl.jena.graph.Node;
+import com.hp.hpl.jena.graph.NodeFactory;
 import com.hp.hpl.jena.graph.Triple;
 import com.hp.hpl.jena.util.iterator.ExtendedIterator;
 
@@ -14,6 +15,10 @@ import com.hp.hpl.jena.util.iterator.ExtendedIterator;
  */
 public class GraphHandler {
 
+	public static void main(String[] argc){
+		System.out.println(NodeFactory.createAnon().getBlankNodeLabel().replaceAll("[^a-zA-Z0-9]", ""));
+	}
+	
 	/**
 	 * Ermittelt zum Node ob es sich um eine URI, ein Literal 
 	 * oder ein Blank Node handelt und gibt den entsprechenden String zurück:
@@ -25,8 +30,8 @@ public class GraphHandler {
 	 * @return
 	 */
 	public static String NodeToSPARQLString(Node n){
-		return (String) (n.isURI() ? ("<" + n + ">"): (n.isLiteral() ? ("\""+ n.getLiteralValue() + "\"" + 
-				(n.getLiteralDatatypeURI() != null ? ("^^<"+ n.getLiteralDatatype().getURI() + ">") : "")) : n.isBlank() ? n.getBlankNodeLabel() : n));
+		return (String) (n.isURI() ? ("<" + n + ">"): (n.isLiteral() ? ("\""+ n.getLiteralValue().toString().replace("\"", "\\\"") + "\"" + 
+				(n.getLiteralDatatypeURI() != null ? ("^^<"+ n.getLiteralDatatype().getURI() + ">") : "")) : n.isBlank() ? "_:"+n.getBlankNodeLabel().replaceAll("[^a-zA-Z0-9]", ""): n));
 	}
 	
 	/**
@@ -43,7 +48,7 @@ public class GraphHandler {
 		triple += NodeToSPARQLString(t.getSubject())+" ";
 		triple += NodeToSPARQLString(t.getPredicate())+" ";
 		triple += NodeToSPARQLString(t.getObject());
-		triple +="}";
+		triple +=" } ";
 		return triple;
 	}
 	
@@ -58,14 +63,16 @@ public class GraphHandler {
 	public static String GraphToSPARQLString(Graph g){
 		ExtendedIterator<Triple> ti = GraphUtil.findAll(g);
 		String ret="";
-		int i=0;
+//		int i=0;
 		while(ti.hasNext()){
-			ret+=TripleToSPARQLString(ti.next());
-			i++;
+			String triple = TripleToSPARQLString(ti.next());
+			ret+= triple.substring(triple.indexOf("{")+1, triple.lastIndexOf("}"))+" . ";
+//			i++;
 		}
-		if(i>1){
-			ret = "{ "+ret+" }";
-		}
+		ret = ret.substring(0,ret.lastIndexOf("."));
+		
+		ret = "{ "+ret+" }";
+		
 
 		return ret;
 	}

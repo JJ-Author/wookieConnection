@@ -11,13 +11,11 @@ import java.sql.SQLException;
 
 import org.bio_gene.wookie.connection.Connection;
 import org.bio_gene.wookie.connection.ConnectionFactory;
-import org.bio_gene.wookie.connection.CurlConnection;
 import org.bio_gene.wookie.connection.ImplConnection;
 import org.bio_gene.wookie.connection.Connection.UploadType;
 import org.bio_gene.wookie.utils.ConfigParser;
 import org.bio_gene.wookie.utils.GraphHandler;
 import org.junit.Test;
-
 import org.w3c.dom.Node;
 
 import com.hp.hpl.jena.graph.Graph;
@@ -29,14 +27,15 @@ import com.hp.hpl.jena.rdf.model.ModelFactory;
 
 public class ConnectionTests {
 	
+	
 	@Test
 	public void xmlTests(){
 		Connection con = ConnectionFactory.createConnection("resources/config.xml");
 		assertTrue(con instanceof ImplConnection);
 		con.close();
-		con = ConnectionFactory.createConnection("resources/config.xml", "curl");
-		assertTrue(con instanceof CurlConnection);
-		con.close();
+//		con = ConnectionFactory.createConnection("resources/config.xml", "curl");
+//		assertTrue(con instanceof CurlConnection);
+//		con.close();
 //		con = ConnectionFactory.createConnection("resources/config.xml", "implcurl");
 //		assertTrue(con instanceof ImplCurlConnection);
 //		con.close();
@@ -59,9 +58,9 @@ public class ConnectionTests {
 		Connection con = ConnectionFactory.createConnection(db);
 		assertTrue(con instanceof ImplConnection);
 		con.close();
-		con = ConnectionFactory.createConnection(db, "curl");
-		assertTrue(con instanceof CurlConnection);
-		con.close();
+//		con = ConnectionFactory.createConnection(db, "curl");
+//		assertTrue(con instanceof CurlConnection);
+//		con.close();
 //		con = ConnectionFactory.createConnection(db, "implcurl");
 //		assertTrue(con instanceof ImplCurlConnection);
 //		con.close();
@@ -91,7 +90,7 @@ public class ConnectionTests {
 	}
 	
 	public void sparqlTest(Connection con){
-		con.setUploadType(UploadType.PUT);
+//		con.setUploadType(UploadType.PUT);
 		com.hp.hpl.jena.graph.Node s = NodeFactory.createURI("http://example.com");
 		com.hp.hpl.jena.graph.Node p = NodeFactory.createURI("http://example.com/#");
 		com.hp.hpl.jena.graph.Node o = NodeFactory.createLiteral("abc");
@@ -101,7 +100,9 @@ public class ConnectionTests {
 		inputTests(con, t);
 		assertTrue(selectTests(con, t));
 		Triple t1 = initFile("file1.ttl", "TURTLE");
+		fileTests(con, "ds_50.0.nt");
 		fileTests(con, "file1.ttl");
+		
 		assertTrue(!selectTests(con, t));
 		assertTrue(selectTests(con, t1));
 		con.setUploadType(UploadType.POST);
@@ -119,7 +120,10 @@ public class ConnectionTests {
 	
 	@Test
 	public void connections(){
-		implTest();
+		ConnectionFactory.setDriver("org.apache.jena.jdbc.remote.RemoteEndpointDriver");
+		ConnectionFactory.setJDBCPrefix("jdbc:jena:remote:query=http://");
+		
+//		implTest();
 //		curlTest(); //only on Linux!
 //		implCurlTest(); deprecated
 	}
@@ -138,17 +142,14 @@ public class ConnectionTests {
 	}
 	
 	
-	public void implTest(){
-		Connection con = ConnectionFactory.createConnection("resources/config.xml", "impl");
-		sparqlTest(con);
-		con.close();
-	}
+
 
 
 	public void inputTests(Connection con, Triple t){
-		con.update("INSERT INTO <http://example.com> "
-				+GraphHandler.TripleToSPARQLString(t));
-		
+//		con.update("LOAD <http://www.w3.org/TeamSubmission/turtle/tests/test-30.out> INTO <http://bla.com/>");
+		con.update("INSERT DATA { GRAPH <http://example.com> "
+				+GraphHandler.TripleToSPARQLString(t)+"}");
+//		con.update("INSERT DATA { GRAPH <http://example.com> {<http://ex.xom> <http://ex.xom> <http://ex.xom2>. <http://ex.xom> <http://ex.xom2> true . <http://ex.xom> <http://ex.xom2/test> 'asdadsfsdaf'}}");
 	}
 	
 
@@ -159,14 +160,19 @@ public class ConnectionTests {
 
 	public void dropTests(Connection con){
 		con.dropGraph("http://example.com");
+		con.dropGraph("http://bio-gene.org/sparql/");
 	}
 	
 	
 	public Boolean selectTests(Connection con, Triple t){
 		try{
 			ResultSet rs = con.select("SELECT ?s ?p ?o FROM <http://example.com> WHERE {?s ?p ?o} LIMIT 1");
+//			ResultSet rs = con.select("SELECT distinct ?col WHERE { ?tbl <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> . ?tbl <http://dbpedia.org/ontology/activeYearsEndDate> ?col . }");
 			int i =0;
 			while(rs.next()){
+				if(rs.getString(1).contains("2010-06-31")){
+					System.out.println(rs.getString(0));
+				}
 				if(! rs.getObject(1).toString().equals(t.getSubject().toString()))
 					return false;
 				if(! rs.getObject(2).toString().equals(t.getPredicate().toString()))
