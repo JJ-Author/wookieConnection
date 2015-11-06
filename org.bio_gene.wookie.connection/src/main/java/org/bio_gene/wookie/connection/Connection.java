@@ -73,6 +73,9 @@ public interface Connection  {
 	
 	public long loadUpdate(String filename, String graphURI);
 	
+	public Long deleteFile(String file, String graphURI);
+	
+	public Long deleteFile(File file, String graphURI);
 	/**
 	 * EXPERIMENTAL!!!!
 	 * Setzt ob autoCommit geschehen soll oder nicht
@@ -117,6 +120,11 @@ public interface Connection  {
 	 * @return true wenn erflogreich, andernfalss false
 	 */
 	public Boolean close();
+	public Boolean isClosed() throws SQLException;
+	
+	public Long selectTime(String query, int queryTimeout) throws SQLException;
+	
+	public Long selectTime(String query) throws SQLException;
 	
 	public ResultSet select(String query, int queryTimeout) throws SQLException;
 	

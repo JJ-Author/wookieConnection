@@ -16,6 +16,11 @@ import com.hp.hpl.jena.util.iterator.ExtendedIterator;
 public class GraphHandler {
 
 	public static void main(String[] argc){
+		System.out.println(NodeFactory.createLiteral("bla asdkjahdsf"));
+		System.out.println(NodeToSPARQLString(NodeFactory.createLiteral("bla asdkjahdsf")));
+		System.out.println(NodeToSPARQLString(NodeFactory.createLiteral("bla \n asdkjahdsf")));
+		System.out.println(NodeToSPARQLString(NodeFactory.createLiteral("bla asdkjahdsf")));
+		System.out.println(NodeToSPARQLString(NodeFactory.createLiteral("bla \"?\"asdkjahdsf")));
 		System.out.println(NodeFactory.createAnon().getBlankNodeLabel().replaceAll("[^a-zA-Z0-9]", ""));
 	}
 	
@@ -30,8 +35,21 @@ public class GraphHandler {
 	 * @return
 	 */
 	public static String NodeToSPARQLString(Node n){
-		return (String) (n.isURI() ? ("<" + n + ">"): (n.isLiteral() ? ("\""+ n.getLiteralValue().toString().replace("\"", "\\\"") + "\"" + 
-				(n.getLiteralDatatypeURI() != null ? ("^^<"+ n.getLiteralDatatype().getURI() + ">") : "")) : n.isBlank() ? "_:"+n.getBlankNodeLabel().replaceAll("[^a-zA-Z0-9]", ""): n));
+		if(n.isURI()){
+			return "<" + n + ">";
+		}
+		if(n.isLiteral()){
+			String dataType = "";
+			if(n.getLiteralDatatypeURI()!=null && n.getLiteralDatatypeURI().isEmpty()){		
+				dataType += "^^<"+n.getLiteralDatatypeURI()+">";
+			}
+			n.getLiteral().toString(true);
+			return n.getLiteral().toString(true)+dataType;
+		}
+		if(n.isBlank()){
+			return "_:"+n.getBlankNodeLabel().replaceAll("[^a-zA-Z0-9]", "");
+		}
+		return n.toString();
 	}
 	
 	/**

@@ -50,6 +50,7 @@ import com.hp.hpl.jena.update.UpdateRequest;
  * @author Felix Conrads
  *
  */
+@Deprecated
 public class CurlConnection extends CurlProcess implements Connection {
 
 	private int queryTimeout=180;
@@ -588,6 +589,36 @@ public class CurlConnection extends CurlProcess implements Connection {
 	public long getTriplesToUpload() {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+
+	@Override
+	public Long deleteFile(File file, String graphURI) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Long deleteFile(String file, String graphURI) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Long selectTime(String query, int queryTimeout) throws SQLException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Long selectTime(String query) throws SQLException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Boolean isClosed() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

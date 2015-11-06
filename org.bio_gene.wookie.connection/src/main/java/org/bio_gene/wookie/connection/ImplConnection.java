@@ -1,8 +1,10 @@
 package org.bio_gene.wookie.connection;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.ResultSet;
@@ -15,6 +17,8 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jena.Stmt;
+
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
@@ -22,6 +26,9 @@ import org.apache.http.client.protocol.ClientContext;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
+import org.apache.jena.jdbc.connections.JenaConnection;
+import org.apache.jena.jdbc.remote.statements.RemoteEndpointStatement;
+import org.apache.jena.jdbc.statements.JenaStatement;
 import org.apache.jena.riot.RDFLanguages;
 import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
 import org.bio_gene.wookie.utils.FileHandler;
@@ -30,6 +37,8 @@ import org.bio_gene.wookie.utils.LogHandler;
 import org.lexicon.jdbc4sparql.SPARQLConnection;
 
 import com.hp.hpl.jena.graph.Graph;
+import com.hp.hpl.jena.query.Query;
+import com.hp.hpl.jena.query.QueryFactory;
 import com.hp.hpl.jena.query.Syntax;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
@@ -39,6 +48,8 @@ import com.hp.hpl.jena.update.UpdateExecutionFactory;
 import com.hp.hpl.jena.update.UpdateFactory;
 import com.hp.hpl.jena.update.UpdateProcessor;
 import com.hp.hpl.jena.update.UpdateRequest;
+import com.ibm.icu.util.Calendar;
+
 
 /**
  * Connection rein basierend auf dem SPARQL Endpoint des Triplestores
@@ -69,9 +80,9 @@ public class ImplConnection implements Connection {
 	 */
 	public ImplConnection(int queryTimeout){
 		Logger log = Logger.getLogger(this.getClass().getName());
+		LogHandler.initLogFileHandler(log, ImplConnection.class.getSimpleName());
 		log.setLevel(Level.FINE);
 		this.setLogger(log);
-		LogHandler.initLogFileHandler(log, "Connection");
 		this.queryTimeout = queryTimeout;
 	}
 	
@@ -106,6 +117,7 @@ public class ImplConnection implements Connection {
 		}
 		Long ret = 0L;
 		Boolean isFile=false;
+		long numberOfTriples=this.numberOfTriples;
 		if(numberOfTriples<1){
 			numberOfTriples =FileHandler.getLineCount(file);
 			isFile=true;
@@ -127,7 +139,62 @@ public class ImplConnection implements Connection {
 		}
 		return ret;
 	}
+
+	public Long deleteFile(String file, String graphURI){
+		return 	deleteFile(new File(file), graphURI);
+	}
 	
+	public Long deleteFile(File file, String graphURI){
+		if(!file.exists()){
+			LogHandler.writeStackTrace(log, new FileNotFoundException(), Level.SEVERE);
+			return -1L;
+	}
+	Long ret = 0L;
+	Boolean isFile=false;
+	long numberOfTriples = this.numberOfTriples;
+	if(numberOfTriples<1){
+		numberOfTriples =FileHandler.getLineCount(file);
+		isFile=true;
+	}
+	try {
+		for(File f : FileHandler.splitTempFile(file, numberOfTriples)){
+			Long retTmp = deleteFileIntern(f, graphURI);
+			if(retTmp==-1){
+				log.severe("Couldn't upload part: "+f.getName());
+			}else{
+				ret+=retTmp;
+			}
+			if(!isFile)
+				f.delete();
+		}
+	} catch (IOException e) {
+		log.severe("Couldn't upload file(s) due to: ");
+		ret =-1L;
+	}
+	return ret;
+	}
+	
+
+	private Long deleteFileIntern(File f, String graphURI) throws IOException {
+		String query = "";
+		query="DELETE WHERE {";
+		if(graphURI!=null){
+			query+=" GRAPH <"+graphURI+"> { ";
+		}
+		FileReader fis = new FileReader(f);
+		BufferedReader bis = new BufferedReader(fis);
+		String triple="";
+		while((triple=bis.readLine())!=null){
+			query+=triple;
+		}
+		bis.close();
+		if(graphURI!=null){
+			query+=" }";
+		}
+		query+=" }";
+		return update(query);
+		
+	}
 
 	/**
 	 * Läd die angegebene Datei in den angegebenen Graph
@@ -150,7 +217,34 @@ public class ImplConnection implements Connection {
 		String absFile = file.getAbsolutePath();
 		String contentType = RDFLanguages.guessContentType(absFile).getContentType();
 		Model input = null;
-			if(this.transactionInput!= null){ 
+		if(FileExtensionToRDFContentTypeMapper.guessFileFormat(contentType)=="N-TRIPLE"){
+			String update = "INSERT DATA ";
+			if(graphURI !=null){
+				update+=" { GRAPH <"+graphURI+"> ";
+			}
+			try {
+				update+="{";
+				FileReader fis = new FileReader(file);
+				BufferedReader bis = new BufferedReader(fis);
+				String triple="";
+				while((triple=bis.readLine())!=null){
+					update+=triple;
+				}
+				if(graphURI!=null){
+					update+="}";
+				}
+				update+="}";
+				Long ret =  this.update(update);
+				bis.close();
+				return ret;
+			} catch (IOException e) {
+				LogHandler.writeStackTrace(log, e, Level.SEVERE);
+				return null;
+			}
+			
+			
+		}
+		if(this.transactionInput!= null){ 
 				input = ModelFactory.createModelForGraph(transactionInput);
 			}
 			else{
@@ -181,9 +275,9 @@ public class ImplConnection implements Connection {
 			if(graphURI !=null){
 				update+=" { GRAPH <"+graphURI+"> ";
 			}
-			else if(((SPARQLConnection) this.con).getDefaultGraphs().size()>0){
-				update += " { GRAPH <"+((SPARQLConnection) this.con).getDefaultGraphs().get(0)+"> ";
-			}
+//			else if(((SPARQLConnection) this.con).getDefaultGraphs().size()>0){
+//				update += " { GRAPH <"+((SPARQLConnection) this.con).getDefaultGraphs().get(0)+"> ";
+//			}
 			update+=GraphHandler.GraphToSPARQLString(input.getGraph());
 			if(graphURI !=null || ((SPARQLConnection) this.con).getDefaultGraphs().size()>0){
 				update+=" }";
@@ -245,15 +339,27 @@ public class ImplConnection implements Connection {
 	 */
 	public ResultSet select(String query, int queryTimeout){
 		try{
-			Statement stm = this.con.createStatement();
+			RemoteEndpointStatement stm = (RemoteEndpointStatement) this.con.createStatement();
 			stm.setQueryTimeout(queryTimeout);
+		
 			ResultSet rs=null;
-			rs = stm.executeQuery(query);
+			Stmt s = new Stmt(stm);
+			Query q = QueryFactory.create(query);
+			if(q.isSelectType()&&q.hasLimit()){
+				rs = s.execute(query);
+			}
+			else{
+				rs = stm.executeQuery(query);
+			}
+			
 //			stm.close();
 			return rs;
 		}
 		catch(SQLException e){
+			log.warning("Query doesn't work: "+query);
+			log.warning("For Connection: "+endpoint);
 			LogHandler.writeStackTrace(log, e, Level.SEVERE);
+			
 			return null;
 		}
 	}
@@ -512,6 +618,41 @@ public class ImplConnection implements Connection {
 	@Override
 	public long getTriplesToUpload() {
 		return this.numberOfTriples;
+	}
+
+	@Override
+	public Long selectTime(String query, int queryTimeout) throws SQLException {
+		try{
+			Statement stm = this.con.createStatement();
+			stm.setQueryTimeout(queryTimeout);
+			ResultSet rs=null;
+			Calendar start = Calendar.getInstance();
+			rs = stm.executeQuery(query);
+			Calendar end = Calendar.getInstance();
+			if(rs==null){
+				return -1L;
+			}
+			stm.close();
+			return end.getTimeInMillis()-start.getTimeInMillis();
+		}
+		catch(SQLException e){
+			log.warning("Query doesn't work: "+query);
+			log.warning("For Connection: "+endpoint);
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
+			
+			return -1L;
+		}
+	}
+
+	@Override
+	public Long selectTime(String query) throws SQLException {
+		return selectTime(query, this.queryTimeout);
+
+	}
+
+	@Override
+	public Boolean isClosed() throws SQLException {
+		return this.con.isClosed();
 	}
 	
 	

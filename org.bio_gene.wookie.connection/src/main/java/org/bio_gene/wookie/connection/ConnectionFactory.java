@@ -17,7 +17,6 @@ import org.bio_gene.wookie.utils.LogHandler;
 import org.lexicon.jdbc4sparql.SPARQLConnection;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 /**
@@ -55,8 +54,9 @@ import org.xml.sax.SAXException;
  */
 public class ConnectionFactory {
 
-	private static String driver = "org.lexicon.jdbc4sparql.SPARQLDriver";
-	private static String jdbcPrefix = "jdbc:sparql:http://";
+
+	private static String driver = "org.apache.jena.jdbc.remote.RemoteEndpointDriver";
+	private static String jdbcPrefix = "jdbc:jena:remote:query=http://";
 
 	// private static String driver = "org.xenei.jdbc4sparql.J4SDriver";
 	// private static String jdbcPrefix = "jdbc:j4s:http://";
@@ -67,7 +67,7 @@ public class ConnectionFactory {
 	 * 
 	 */
 	public enum ConnectionType {
-		CURL, IMPLCURL, IMPL
+		CURL, IMPLCURL, IMPL, FEDERATED
 	}
 
 	/**
@@ -295,9 +295,31 @@ public class ConnectionFactory {
 			return createImplConnection(params.get("endpoint"),
 					params.get("user"), params.get("pwd"), params.get("update-endpoint"), 
 					Integer.valueOf(params.get("queryTimeout")));
-		
+		case FEDERATED:
+			
+			return createFederatedConnection(params.get("endpoint"),
+					params.get("user"), params.get("pwd"), params.get("update-endpoint"), 
+					Integer.valueOf(params.get("queryTimeout")));
 		}
 		return null;
+	}
+
+	public static Connection createFederatedConnection(String endpoint,
+			String user, String pwd, String updateEndpoint, Integer queryTimeOut) {
+		Connection con = new FederatedConnection(queryTimeOut);
+		String[] users = user.split(";");
+		String[] pwds = pwd.split(";");
+		String[] updates = updateEndpoint.split(";");
+		con.setEndpoint("http://"+endpoint);
+		con.setConnection(connect(endpoint, null, ConnectionFactory.driver, null, null));
+		for(int i=0;i<updates.length;i++){
+			con.setPwd(pwds[i]);
+			con.setUser(users[i]);
+			con.setUpdateEndpoint("http://"+updates[i]);
+			con.setConnection(connect(endpoint, updates[i], ConnectionFactory.driver, users[i],
+					pwds[i]));
+		}
+		return con;
 	}
 
 	/**
@@ -583,6 +605,7 @@ public class ConnectionFactory {
 			return null;
 		}
 	
+		
 		if(con!=null){
 			
 			return con;

@@ -28,7 +28,7 @@
 		<dependency>
 			<groupId>org.apache.jena</groupId>
 			<artifactId>jena-jdbc-driver-remote</artifactId>
-			<version>1.1.0</version>
+			<version>1.1.2</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -169,40 +169,40 @@
 		</repository>
 	</repositories>
 	<build>
-	<resources> 
-        <resource>
-            <directory>src/main/resources</directory>
-            <excludes>
-                <exclude>**/*.jar</exclude>
-            </excludes>
-            <filtering>false</filtering>
-        </resource>
-     </resources> 
-	<plugins>
-	
-	<plugin>
-              <artifactId>maven-assembly-plugin</artifactId>
-              <configuration>
-                  <archive>
-                      <manifest>
-                      </manifest>
-                  </archive>
-              </configuration>
-              <executions>
-                  <execution>
-                      <id>make-my-jar-with-dependencies</id>
-                      <phase>package</phase>
-                      <goals>
-                          <goal>single</goal>
-                      </goals>
-                      <configuration>
-              <descriptors>
-                <descriptor>dist.xml</descriptor>
-              </descriptors>
-            </configuration>
-                  </execution>
-              </executions>
-          </plugin>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<excludes>
+					<exclude>**/*.jar</exclude>
+				</excludes>
+				<filtering>false</filtering>
+			</resource>
+		</resources>
+		<plugins>
+
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+						</manifest>
+					</archive>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-my-jar-with-dependencies</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<configuration>
+							<descriptors>
+								<descriptor>dist.xml</descriptor>
+							</descriptors>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 </project>
