@@ -58,6 +58,12 @@ public class ConnectionFactory {
 	private static String driver = "org.apache.jena.jdbc.remote.RemoteEndpointDriver";
 	private static String jdbcPrefix = "jdbc:jena:remote:query=http://";
 
+	private static Logger log = Logger.getLogger(ConnectionFactory.class.getSimpleName());
+	
+	static {
+		LogHandler.initLogFileHandler(log, ConnectionFactory.class.getSimpleName());
+	}
+	
 	// private static String driver = "org.xenei.jdbc4sparql.J4SDriver";
 	// private static String jdbcPrefix = "jdbc:j4s:http://";
 	/**
@@ -140,7 +146,7 @@ public class ConnectionFactory {
 				ret.put("pwd", cp.getElementAt("pwd", 0).getAttribute("value"));
 				cp.setNode((Element) db);
 			} catch (Exception e) {
-				Logger.getGlobal().info("No User and PWD is set - correct?");
+				log.info("No User and PWD is set - correct?");
 			}
 			ret.put("connectionType", db.getAttribute("type").toUpperCase());
 			switch (ConnectionType.valueOf(db.getAttribute("type")
@@ -153,7 +159,7 @@ public class ConnectionFactory {
 			}
 			params.putAll(ret);
 		} catch (SAXException | IOException | ParserConfigurationException e) {
-			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
 			return null;
 		}
 		return params;
@@ -192,7 +198,7 @@ public class ConnectionFactory {
 			
 			return ret;
 		} catch (ParserConfigurationException | SAXException | IOException e) {
-			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
 			return null;
 		}
 	}
@@ -239,7 +245,7 @@ public class ConnectionFactory {
 			Node databases = cp.getElementAt("databases", 0);
 			return createConnection(databases, id);
 		} catch (SAXException | IOException | ParserConfigurationException e) {
-			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
 			return null;
 		}
 	}
@@ -517,7 +523,7 @@ public class ConnectionFactory {
 		try {
 			Class.forName(driver);
 		} catch (ClassNotFoundException e) {
-			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
 			return null;
 		}
 
@@ -540,7 +546,7 @@ public class ConnectionFactory {
 
 			}
 		} catch (SQLException e) {
-			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
 			return null;
 		}
 		return con;
@@ -553,7 +559,7 @@ public class ConnectionFactory {
 		try {
 			Class.forName(driver);
 		} catch (ClassNotFoundException e) {
-			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
 			return null;
 		}
 		
@@ -562,7 +568,7 @@ public class ConnectionFactory {
 //			java.sql.DriverManager.registerDriver(new J4SDriver());
 			RemoteEndpointDriver.register();
 		} catch (SQLException e1) {
-			LogHandler.writeStackTrace(Logger.getGlobal(), e1, Level.SEVERE);
+			LogHandler.writeStackTrace(log, e1, Level.SEVERE);
 			return null;
 		}
 		java.sql.Connection internCon = null;
@@ -601,7 +607,7 @@ public class ConnectionFactory {
 			}
 		}
 		} catch (SQLException e) {
-			LogHandler.writeStackTrace(Logger.getGlobal(), e, Level.SEVERE);
+			LogHandler.writeStackTrace(log, e, Level.SEVERE);
 			return null;
 		}
 	

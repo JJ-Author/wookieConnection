@@ -8,16 +8,17 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
-import org.bio_gene.wookie.utils.GraphHandler;
-import org.bio_gene.wookie.utils.LogHandler;
-import org.junit.Test;
 
 import com.hp.hpl.jena.graph.Graph;
 import com.hp.hpl.jena.rdf.model.Literal;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.rdf.model.Property;
+import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
+import org.bio_gene.wookie.utils.GraphHandler;
+import org.bio_gene.wookie.utils.LogHandler;
+import org.junit.Test;
+
 
 
 public class UtilityTests {

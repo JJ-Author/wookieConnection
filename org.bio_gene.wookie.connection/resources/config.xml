@@ -3,13 +3,12 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<databases main="virtuoso">
 		<database id="curl" type="curl">
-			<endpoint uri="localhost/sparql" />
-			<user value="dba" />
-			<pwd value="dba" />
+			<endpoint uri="bio-gene.org:8000/sparql/" />
+			<update-endpoint uri="bio-gene.org:8000/update/" />
 			<curl-url url="http://localhost/sparql-graph-crud-auth" />
-			<curl-command command="C:\Program Files (x86)\Git\bin\curl --digest --user $USER:$PWD --url '$CURL-URL?graph-uri=$GRAPH-URI' -X $UPLOAD-TYPE -T $FILE"/>	
+			<curl-command command="curl --digest --user $USER:$PWD --url '$CURL-URL?graph-uri=$GRAPH-URI' $UPLOAD-TYPE -T $FILE"/>
 			<curl-drop command="curl -X DELETE $GRAPH-URI --url '$CURL-URL'"/>
-			<curl-update command="curl -i -d '$UPDATE' -u '$USER:$PWD' -H 'Content-Type: application/sparql-query'"/>
+			<curl-update command="curl -i -d '$UPDATE' -u '$USER:$PWD' -H 'Content-Type: application/sparql-query' --url 'http://$ENDPOINT'"/>
 		</database>
 		<database id="implcurl" type="implcurl">
 			<endpoint uri="localhost/sparql" />
@@ -18,7 +17,7 @@
 			<auth-type type="DIGEST"/>
 		</database>
 		<database id="impl" type="impl">
-			<endpoint uri="localhost/sparql" />
+			<endpoint uri="bio-gene.org:8890/sparql-auth" />
 			<user value="dba" />
 			<pwd value="dba" />
 		</database>
