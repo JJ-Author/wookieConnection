@@ -10,11 +10,14 @@
 			<curl-drop command="curl -X DELETE $GRAPH-URI --url '$CURL-URL'"/>
 			<curl-update command="curl -i -d '$UPDATE' -u '$USER:$PWD' -H 'Content-Type: application/sparql-query' --url 'http://$ENDPOINT'"/>
 		</database>
-		<database id="implcurl" type="implcurl">
-			<endpoint uri="localhost/sparql" />
+		<database id="implcurl" type="lib">
+			<class value="org.bio_gene.wookie.connection.TestConnection"/>
+			<type value="keineAhnung"/>
+			<endpoint value="localhost/sparql" />
 			<user value="dba" />
 			<pwd value="dba" />
-			<auth-type type="DIGEST"/>
+			<asdasfd value="I DONT KNOW"/>
+			<auth-type value="DIGEST"/>
 		</database>
 		<database id="impl" type="impl">
 			<endpoint uri="bio-gene.org:8890/sparql-auth" />

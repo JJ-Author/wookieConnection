@@ -28,7 +28,7 @@ import com.hp.hpl.jena.rdf.model.ModelFactory;
 public class ConnectionTests {
 	
 	
-	@Test
+//	@Test
 	public void xmlTests(){
 		Connection con = ConnectionFactory.createConnection("resources/config.xml");
 		assertTrue(con instanceof ImplConnection);
@@ -43,8 +43,8 @@ public class ConnectionTests {
 		assertTrue(con instanceof ImplConnection);
 		con.close();
 	}
-
-	@Test
+//
+//	@Test
 	public void nodeTests(){
 		Node db = null;
 		try{
@@ -122,7 +122,8 @@ public class ConnectionTests {
 	public void connections(){
 		ConnectionFactory.setDriver("org.apache.jena.jdbc.remote.RemoteEndpointDriver");
 		ConnectionFactory.setJDBCPrefix("jdbc:jena:remote:query=http://");
-		
+		Connection con = ConnectionFactory.createConnection("resources/config.xml", "implcurl");
+		con.close();
 //		implTest();
 //		curlTest(); //only on Linux!
 //		implCurlTest(); deprecated

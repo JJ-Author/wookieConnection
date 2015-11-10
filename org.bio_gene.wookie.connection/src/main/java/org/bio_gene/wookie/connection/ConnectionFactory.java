@@ -1,6 +1,8 @@
 package org.bio_gene.wookie.connection;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -17,6 +19,7 @@ import org.bio_gene.wookie.utils.LogHandler;
 import org.lexicon.jdbc4sparql.SPARQLConnection;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 /**
@@ -73,7 +76,7 @@ public class ConnectionFactory {
 	 * 
 	 */
 	public enum ConnectionType {
-		CURL, IMPLCURL, IMPL, FEDERATED
+		CURL, IMPLCURL, IMPL, FEDERATED, LIB
 	}
 
 	/**
@@ -120,6 +123,19 @@ public class ConnectionFactory {
 
 			HashMap<String, String> ret = new HashMap<String, String>();
 			cp.setNode((Element) db);
+			ConnectionType ct = ConnectionType.valueOf(db.getAttribute("type").toUpperCase());
+			if(ct.equals(ConnectionType.LIB)){
+				params.put("connectionType", db.getAttribute("type").toUpperCase());
+				NodeList children = db.getChildNodes();
+				for(int i=0;i<children.getLength();i++){
+					Node child = children.item(i);
+					if(child.getNodeType()!=Node.TEXT_NODE){
+						params.put(child.getNodeName(), ((Element)child).getAttribute("value"));
+					}
+				}
+				return params;
+			}
+			
 			ret.put("endpoint",
 					cp.getElementAt("endpoint", 0).getAttribute("uri"));
 			
@@ -306,6 +322,18 @@ public class ConnectionFactory {
 			return createFederatedConnection(params.get("endpoint"),
 					params.get("user"), params.get("pwd"), params.get("update-endpoint"), 
 					Integer.valueOf(params.get("queryTimeout")));
+		case LIB:
+			String className = params.get("class");
+			String type = params.get("type");
+			try {
+				return createConnectionFromLib(className, type, params);
+			} catch (ClassNotFoundException | InstantiationException
+					| IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException | NoSuchMethodException
+					| SecurityException e) {
+				log.severe("Couldn't instantiate connection due to following error");
+				LogHandler.writeStackTrace(log, e, Level.SEVERE);
+			}
 		}
 		return null;
 	}
@@ -505,6 +533,16 @@ public class ConnectionFactory {
 		return con;
 	}
 
+	public static Connection createConnectionFromLib(String className, String type, HashMap<String, String> params) throws ClassNotFoundException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException{
+		Class<Connection> cl = (Class<Connection>)Class.forName(className);
+//		Connection con = cl.newInstance();
+		Constructor<Connection> c = cl.getConstructor(Map.class);
+		Connection con = c.newInstance(params);
+		
+		return con;
+	}
+	
+	
 	/**
 	 * Erstellt eine auf SPARQL Update basierende Connection
 	 * 
