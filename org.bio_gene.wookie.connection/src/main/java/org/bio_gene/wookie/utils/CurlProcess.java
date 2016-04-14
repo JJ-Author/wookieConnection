@@ -19,7 +19,11 @@ import org.apache.commons.exec.DefaultExecutor;
  */
 public class CurlProcess {
 	
-	private Logger log = Logger.getLogger(CurlProcess.class.getName());
+	private Logger log = Logger.getLogger(CurlProcess.class.getSimpleName());
+	
+	public CurlProcess(){
+		LogHandler.initLogFileHandler(log, CurlProcess.class.getSimpleName());
+	}
 	
 	protected void setLogger(Logger log){
 		this.log = log;

@@ -25,13 +25,13 @@ import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
 import org.bio_gene.wookie.utils.FileHandler;
 import org.bio_gene.wookie.utils.LogHandler;
 
-import com.hp.hpl.jena.query.Syntax;
-import com.hp.hpl.jena.sparql.modify.UpdateProcessRemoteForm;
-import com.hp.hpl.jena.sparql.modify.request.UpdateLoad;
-import com.hp.hpl.jena.update.UpdateExecutionFactory;
-import com.hp.hpl.jena.update.UpdateFactory;
-import com.hp.hpl.jena.update.UpdateProcessor;
-import com.hp.hpl.jena.update.UpdateRequest;
+import org.apache.jena.query.Syntax;
+import org.apache.jena.sparql.modify.UpdateProcessRemoteForm;
+import org.apache.jena.sparql.modify.request.UpdateLoad;
+import org.apache.jena.update.UpdateExecutionFactory;
+import org.apache.jena.update.UpdateFactory;
+import org.apache.jena.update.UpdateProcessor;
+import org.apache.jena.update.UpdateRequest;
 import com.ibm.icu.util.Calendar;
 
 public class FederatedConnectionHelper implements Runnable {

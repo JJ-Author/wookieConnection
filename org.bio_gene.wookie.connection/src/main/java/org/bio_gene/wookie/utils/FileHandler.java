@@ -12,9 +12,9 @@ import java.util.logging.Logger;
 
 import org.apache.jena.riot.RDFLanguages;
 
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.StmtIterator;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.StmtIterator;
 
 public class FileHandler {
 	
@@ -86,7 +86,8 @@ public class FileHandler {
 		Model m = ModelFactory.createDefaultModel();
 		String absFile = file.getAbsolutePath();
 		String contentType = RDFLanguages.guessContentType(absFile).getContentType();
-		m.read(new FileInputStream(file), null, FileExtensionToRDFContentTypeMapper.guessFileFormat(contentType));
+		FileInputStream input = new FileInputStream(file);
+		m.read(input, null, FileExtensionToRDFContentTypeMapper.guessFileFormat(contentType));
 		StmtIterator stmtIt = m.listStatements();
 		for(int i=0; i<divide;i++){
 			File tmp = File.createTempFile(file.getName()+i, ".nt");
@@ -101,6 +102,7 @@ public class FileHandler {
 			pw.close();
 			ret[i] =tmp ;
 		}
+		input.close();
 		return ret;
 	}
 }

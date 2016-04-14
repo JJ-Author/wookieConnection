@@ -59,7 +59,7 @@ public class ConnectionFactory {
 
 
 	private static String driver = "org.apache.jena.jdbc.remote.RemoteEndpointDriver";
-	private static String jdbcPrefix = "jdbc:jena:remote:query=http://";
+	private static String jdbcPrefix = "jdbc:jena:remote:query=";
 
 	private static Logger log = Logger.getLogger(ConnectionFactory.class.getSimpleName());
 	
@@ -344,12 +344,12 @@ public class ConnectionFactory {
 		String[] users = user.split(";");
 		String[] pwds = pwd.split(";");
 		String[] updates = updateEndpoint.split(";");
-		con.setEndpoint("http://"+endpoint);
+		con.setEndpoint(endpoint);
 		con.setConnection(connect(endpoint, null, ConnectionFactory.driver, null, null));
 		for(int i=0;i<updates.length;i++){
 			con.setPwd(pwds[i]);
 			con.setUser(users[i]);
-			con.setUpdateEndpoint("http://"+updates[i]);
+			con.setUpdateEndpoint(updates[i]);
 			con.setConnection(connect(endpoint, updates[i], ConnectionFactory.driver, users[i],
 					pwds[i]));
 		}
@@ -524,10 +524,10 @@ public class ConnectionFactory {
 		Connection con = new ImplConnection(queryTimeout);
 		con.setPwd(password);
 		con.setUser(user);
-		con.setEndpoint("http://"+endpoint);
+		con.setEndpoint(endpoint);
 		if(updateEndpoint==null)
 			updateEndpoint = endpoint;
-		con.setUpdateEndpoint("http://"+updateEndpoint);
+		con.setUpdateEndpoint(updateEndpoint);
 		con.setConnection(connect(endpoint, updateEndpoint, ConnectionFactory.driver, user,
 				password));
 		return con;
@@ -614,8 +614,8 @@ public class ConnectionFactory {
 		// geschehen
 		String url = jdbcPrefix+endpoint;
 		if(driver.equals("org.apache.jena.jdbc.remote.RemoteEndpointDriver")){
-			jdbcPrefix="jdbc:jena:remote:query=http://"+endpoint
-					+"&update=http://"+updateEndpoint;
+			jdbcPrefix="jdbc:jena:remote:query="+endpoint
+					+"&update="+updateEndpoint;
 			url = jdbcPrefix;
 		}
 		

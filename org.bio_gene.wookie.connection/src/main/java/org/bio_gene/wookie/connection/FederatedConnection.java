@@ -34,16 +34,16 @@ import org.bio_gene.wookie.utils.FileHandler;
 import org.bio_gene.wookie.utils.LogHandler;
 import org.bio_gene.wookie.utils.ResultSets;
 
-import com.hp.hpl.jena.query.Query;
-import com.hp.hpl.jena.query.QueryFactory;
-import com.hp.hpl.jena.query.Syntax;
-import com.hp.hpl.jena.sparql.lang.SPARQLParser;
-import com.hp.hpl.jena.sparql.modify.UpdateProcessRemoteForm;
-import com.hp.hpl.jena.sparql.modify.request.UpdateLoad;
-import com.hp.hpl.jena.update.UpdateExecutionFactory;
-import com.hp.hpl.jena.update.UpdateFactory;
-import com.hp.hpl.jena.update.UpdateProcessor;
-import com.hp.hpl.jena.update.UpdateRequest;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.Syntax;
+import org.apache.jena.sparql.lang.SPARQLParser;
+import org.apache.jena.sparql.modify.UpdateProcessRemoteForm;
+import org.apache.jena.sparql.modify.request.UpdateLoad;
+import org.apache.jena.update.UpdateExecutionFactory;
+import org.apache.jena.update.UpdateFactory;
+import org.apache.jena.update.UpdateProcessor;
+import org.apache.jena.update.UpdateRequest;
 import com.ibm.icu.util.Calendar;
 
 public class FederatedConnection implements Connection {
@@ -404,9 +404,12 @@ public class FederatedConnection implements Connection {
 				end =  Calendar.getInstance();
 			}
 			if(rs==null){
+				stm.close();
 				return -1L;
 			}
+			stm.clearBatch();
 			stm.close();
+			rs.close();
 			return end.getTimeInMillis()-start.getTimeInMillis();
 		}
 		catch(SQLException e){
@@ -474,6 +477,7 @@ public class FederatedConnection implements Connection {
 				Statement stmt = connections.get(i).createStatement();
 				stmt.execute(DROP_QUERY+graphURI);
 				Long b = new Date().getTime();
+				stmt.close();
 				time+=b-a;
 			}
 			catch(Exception e){

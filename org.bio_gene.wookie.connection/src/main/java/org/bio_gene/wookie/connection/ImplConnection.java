@@ -6,7 +6,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -26,9 +25,7 @@ import org.apache.http.client.protocol.ClientContext;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
-import org.apache.jena.jdbc.connections.JenaConnection;
 import org.apache.jena.jdbc.remote.statements.RemoteEndpointStatement;
-import org.apache.jena.jdbc.statements.JenaStatement;
 import org.apache.jena.riot.RDFLanguages;
 import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
 import org.bio_gene.wookie.utils.FileHandler;
@@ -36,18 +33,20 @@ import org.bio_gene.wookie.utils.GraphHandler;
 import org.bio_gene.wookie.utils.LogHandler;
 import org.lexicon.jdbc4sparql.SPARQLConnection;
 
-import com.hp.hpl.jena.graph.Graph;
-import com.hp.hpl.jena.query.Query;
-import com.hp.hpl.jena.query.QueryFactory;
-import com.hp.hpl.jena.query.Syntax;
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.sparql.modify.UpdateProcessRemoteForm;
-import com.hp.hpl.jena.sparql.modify.request.UpdateLoad;
-import com.hp.hpl.jena.update.UpdateExecutionFactory;
-import com.hp.hpl.jena.update.UpdateFactory;
-import com.hp.hpl.jena.update.UpdateProcessor;
-import com.hp.hpl.jena.update.UpdateRequest;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.Syntax;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.sparql.modify.UpdateProcessRemoteForm;
+import org.apache.jena.sparql.modify.request.UpdateLoad;
+import org.apache.jena.update.UpdateExecutionFactory;
+import org.apache.jena.update.UpdateFactory;
+import org.apache.jena.update.UpdateProcessor;
+import org.apache.jena.update.UpdateRequest;
 import com.ibm.icu.util.Calendar;
 
 
@@ -127,6 +126,7 @@ public class ImplConnection implements Connection {
 				Long retTmp = uploadFileIntern(f, graphURI);
 				if(retTmp==-1){
 					log.severe("Couldn't upload part: "+f.getName());
+					ret+=-1L;
 				}else{
 					ret+=retTmp;
 				}
@@ -478,6 +478,8 @@ public class ImplConnection implements Connection {
 			if(stm.execute(query)){
 				return stm.getResultSet();
 			}
+			stm.clearBatch();
+			stm.close();
 			return null;
 		} catch (SQLException e) {
 //			LogHandler.writeStackTrace(log, e, Level.SEVERE);
@@ -622,25 +624,64 @@ public class ImplConnection implements Connection {
 
 	@Override
 	public Long selectTime(String query, int queryTimeout) throws SQLException {
+		Statement stm = null;
 		try{
-			Statement stm = this.con.createStatement();
-			stm.setQueryTimeout(queryTimeout);
-			ResultSet rs=null;
+			Query q = QueryFactory.create(query);
+			QueryExecution qexec = QueryExecutionFactory.sparqlService(getEndpoint(), q);
+			
+//			stm = this.con.createStatement();
+//			stm.setQueryTimeout(queryTimeout);
+//			ResultSet rs=null;
 			Calendar start = Calendar.getInstance();
-			rs = stm.executeQuery(query);
-			Calendar end = Calendar.getInstance();
-			if(rs==null){
-				return -1L;
+			switch(q.getQueryType()){
+			case Query.QueryTypeAsk:
+				qexec.execAsk();
+				break;
+			case Query.QueryTypeConstruct:
+				Model m = qexec.execConstruct();
+				m.removeAll();
+				m.close();
+				m=null;
+				break;
+			case Query.QueryTypeDescribe:
+				m = qexec.execDescribe();
+				m.removeAll();
+				m.close();
+				m=null;
+				break;
+			case Query.QueryTypeSelect:
+				org.apache.jena.query.ResultSet r = qexec.execSelect();
+				m = r.getResourceModel();
+				m.removeAll();
+				m.close();
+				m=null;
+				r = null;
+				break;
 			}
-			stm.close();
+//			rs = stm.executeQuery(query);
+			Calendar end = Calendar.getInstance();
+			qexec.close();
+			q = null;
+			qexec =null;
+//			if(rs==null){
+//				stm.close();
+//				return -1L;
+//			}
+//			stm.close();
+//			rs.close();
 			return end.getTimeInMillis()-start.getTimeInMillis();
 		}
-		catch(SQLException e){
-			log.warning("Query doesn't work: "+query);
-			log.warning("For Connection: "+endpoint);
-			LogHandler.writeStackTrace(log, e, Level.SEVERE);
-			
-			return -1L;
+//		catch(SQLException e){
+//			log.warning("Query doesn't work: "+query);
+//			log.warning("For Connection: "+endpoint);
+//			LogHandler.writeStackTrace(log, e, Level.SEVERE);
+//			return -1L;
+//		}
+		finally{
+			if(stm!=null){
+				stm.clearBatch();
+				stm.close();
+			}
 		}
 	}
 

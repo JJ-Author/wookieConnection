@@ -49,6 +49,7 @@ public class LogHandler {
 			log.addHandler(fh);
 			log.addHandler(ch);
 			log.setUseParentHandlers(false);
+			
 			return true;
 		} catch (SecurityException | IOException e) {
 			//Logger schreibt StackTrace der Exception in die Konsole/Log-File

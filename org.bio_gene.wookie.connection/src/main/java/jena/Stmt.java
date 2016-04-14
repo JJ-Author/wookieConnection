@@ -1,14 +1,10 @@
 package jena;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.jena.atlas.iterator.Iter;
-import org.apache.jena.atlas.web.auth.HttpAuthenticator;
-import org.apache.jena.jdbc.connections.JenaConnection;
 import org.apache.jena.jdbc.remote.connections.RemoteEndpointConnection;
 import org.apache.jena.jdbc.results.AskResults;
 import org.apache.jena.jdbc.results.MaterializedSelectResults;
@@ -17,18 +13,13 @@ import org.apache.jena.jdbc.results.TripleIteratorResults;
 import org.apache.jena.jdbc.results.TripleListResults;
 import org.apache.jena.jdbc.statements.JenaStatement;
 
-import com.hp.hpl.jena.query.Query;
-import com.hp.hpl.jena.query.QueryExecution;
-import com.hp.hpl.jena.query.QueryExecutionFactory;
-import com.hp.hpl.jena.query.QueryFactory;
-import com.hp.hpl.jena.query.ReadWrite;
-import com.hp.hpl.jena.query.ResultSetFactory;
-import com.hp.hpl.jena.sparql.engine.http.QueryEngineHTTP;
-import com.hp.hpl.jena.sparql.modify.UpdateProcessRemoteBase;
-import com.hp.hpl.jena.update.UpdateExecutionFactory;
-import com.hp.hpl.jena.update.UpdateFactory;
-import com.hp.hpl.jena.update.UpdateProcessor;
-import com.hp.hpl.jena.update.UpdateRequest;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.ResultSetFactory;
+import org.apache.jena.sparql.engine.http.QueryEngineHTTP;
+import org.apache.jena.update.UpdateFactory;
+import org.apache.jena.update.UpdateRequest;
 
 /**
  * A Jena JDBC statement against a remote endpoint
@@ -149,6 +140,7 @@ public class Stmt{
                     break;
                 }
             } else {
+            	qe.close();
                 throw new SQLException("Unknown SPARQL Query type");
             }
 
@@ -156,7 +148,7 @@ public class Stmt{
             // TYPE_SCROLL_INSENSITIVE and auto-committing since we have
             // already materialized results so don't need the read
             // transaction
- 
+            qe.close();
 
             return this.currResults;
         } catch (SQLException e) {
