@@ -23,6 +23,7 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.protocol.ClientContext;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
 import org.apache.jena.jdbc.remote.statements.RemoteEndpointStatement;
@@ -32,7 +33,6 @@ import org.bio_gene.wookie.utils.FileHandler;
 import org.bio_gene.wookie.utils.GraphHandler;
 import org.bio_gene.wookie.utils.LogHandler;
 import org.lexicon.jdbc4sparql.SPARQLConnection;
-
 import org.apache.jena.graph.Graph;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
@@ -41,12 +41,14 @@ import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.Syntax;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.sparql.engine.http.Params;
 import org.apache.jena.sparql.modify.UpdateProcessRemoteForm;
 import org.apache.jena.sparql.modify.request.UpdateLoad;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateProcessor;
 import org.apache.jena.update.UpdateRequest;
+
 import com.ibm.icu.util.Calendar;
 
 
@@ -72,6 +74,8 @@ public class ImplConnection implements Connection {
 	private String user;
 	private String pwd;
 	private long numberOfTriples;
+	private Object connetionTimeout=5000;
+	private Object socketTimeout=5000;
 	
 	/**
 	 * ERSTELLT KEINE CONNECTION!
@@ -404,6 +408,8 @@ public class ImplConnection implements Connection {
 	
 	private long ownUpdate(String query){
 		HttpContext httpContext = new BasicHttpContext();
+		
+		
 		if(user!=null && pwd!=null){
 			CredentialsProvider provider = new BasicCredentialsProvider();
 			
@@ -415,7 +421,11 @@ public class ImplConnection implements Connection {
 		UpdateRequest request = UpdateFactory.create(query, Syntax.syntaxSPARQL_11);
 		UpdateProcessor processor = UpdateExecutionFactory
 			    .createRemoteForm(request, updateEndpoint);
-			((UpdateProcessRemoteForm)processor).setHttpContext(httpContext);
+		
+		((UpdateProcessRemoteForm)processor).setHttpContext(httpContext);
+		Params params = ((UpdateProcessRemoteForm)processor).getParams();
+		params.setParameter(HttpConnectionParams.CONNECTION_TIMEOUT, connetionTimeout);
+		params.setParameter(HttpConnectionParams.SO_TIMEOUT, socketTimeout);
 			Long a = new Date().getTime();
 			processor.execute();
 		Long b = new Date().getTime();	
@@ -628,7 +638,7 @@ public class ImplConnection implements Connection {
 		try{
 			Query q = QueryFactory.create(query);
 			QueryExecution qexec = QueryExecutionFactory.sparqlService(getEndpoint(), q);
-			
+			qexec.setTimeout(queryTimeout);
 //			stm = this.con.createStatement();
 //			stm.setQueryTimeout(queryTimeout);
 //			ResultSet rs=null;
