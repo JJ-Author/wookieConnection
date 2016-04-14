@@ -28,6 +28,7 @@ import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
 import org.apache.jena.jdbc.remote.statements.RemoteEndpointStatement;
 import org.apache.jena.riot.RDFLanguages;
+import org.apache.jena.riot.WebContent;
 import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
 import org.bio_gene.wookie.utils.FileHandler;
 import org.bio_gene.wookie.utils.GraphHandler;
@@ -42,6 +43,7 @@ import org.apache.jena.query.Syntax;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.sparql.engine.http.Params;
+import org.apache.jena.sparql.engine.http.QueryEngineHTTP;
 import org.apache.jena.sparql.modify.UpdateProcessRemoteForm;
 import org.apache.jena.sparql.modify.request.UpdateLoad;
 import org.apache.jena.update.UpdateExecutionFactory;
@@ -61,7 +63,7 @@ import com.ibm.icu.util.Calendar;
 public class ImplConnection implements Connection {
 
 	private java.sql.Connection con;
-	private int queryTimeout=180;
+	private int queryTimeout=180000;
 	private Logger log;
 	private String endpoint;
 	private String updateEndpoint;
@@ -637,7 +639,10 @@ public class ImplConnection implements Connection {
 		Statement stm = null;
 		try{
 			Query q = QueryFactory.create(query);
-			QueryExecution qexec = QueryExecutionFactory.sparqlService(getEndpoint(), q);
+			QueryEngineHTTP qexec = QueryExecutionFactory.createServiceRequest(getEndpoint(), q);
+//			qexec.setTimeout(5000, 5000);
+			qexec.setModelContentType(WebContent.contentTypeJSONLD);
+//			QueryExecution qexec = QueryExecutionFactory.sparqlService(getEndpoint(), q);
 			qexec.setTimeout(queryTimeout);
 //			stm = this.con.createStatement();
 //			stm.setQueryTimeout(queryTimeout);
@@ -667,6 +672,7 @@ public class ImplConnection implements Connection {
 				m=null;
 				r = null;
 				break;
+				
 			}
 //			rs = stm.executeQuery(query);
 			Calendar end = Calendar.getInstance();
@@ -681,12 +687,12 @@ public class ImplConnection implements Connection {
 //			rs.close();
 			return end.getTimeInMillis()-start.getTimeInMillis();
 		}
-//		catch(SQLException e){
-//			log.warning("Query doesn't work: "+query);
-//			log.warning("For Connection: "+endpoint);
-//			LogHandler.writeStackTrace(log, e, Level.SEVERE);
-//			return -1L;
-//		}
+		catch(Exception e){
+			log.warning("Query doesn't work: "+query);
+			log.warning("For Connection: "+endpoint);
+		LogHandler.writeStackTrace(log, e, Level.SEVERE);
+			return -1L;
+		}
 		finally{
 			if(stm!=null){
 				stm.clearBatch();
