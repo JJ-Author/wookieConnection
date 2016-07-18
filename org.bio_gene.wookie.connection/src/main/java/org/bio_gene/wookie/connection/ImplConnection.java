@@ -16,8 +16,6 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jena.Stmt;
-
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
@@ -26,32 +24,36 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
+import org.apache.jena.graph.Graph;
 import org.apache.jena.jdbc.remote.statements.RemoteEndpointStatement;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryException;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.ResultSetFormatter;
+import org.apache.jena.query.Syntax;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.WebContent;
+import org.apache.jena.sparql.engine.http.Params;
+import org.apache.jena.sparql.engine.http.QueryEngineHTTP;
+import org.apache.jena.sparql.modify.UpdateProcessRemoteForm;
+import org.apache.jena.sparql.modify.request.UpdateLoad;
+import org.apache.jena.sparql.resultset.ResultSetException;
+import org.apache.jena.update.UpdateExecutionFactory;
+import org.apache.jena.update.UpdateFactory;
+import org.apache.jena.update.UpdateProcessor;
+import org.apache.jena.update.UpdateRequest;
 import org.bio_gene.wookie.utils.FileExtensionToRDFContentTypeMapper;
 import org.bio_gene.wookie.utils.FileHandler;
 import org.bio_gene.wookie.utils.GraphHandler;
 import org.bio_gene.wookie.utils.LogHandler;
 import org.lexicon.jdbc4sparql.SPARQLConnection;
-import org.apache.jena.graph.Graph;
-import org.apache.jena.query.Query;
-import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.QueryExecutionFactory;
-import org.apache.jena.query.QueryFactory;
-import org.apache.jena.query.Syntax;
-import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.sparql.engine.http.Params;
-import org.apache.jena.sparql.engine.http.QueryEngineHTTP;
-import org.apache.jena.sparql.modify.UpdateProcessRemoteForm;
-import org.apache.jena.sparql.modify.request.UpdateLoad;
-import org.apache.jena.update.UpdateExecutionFactory;
-import org.apache.jena.update.UpdateFactory;
-import org.apache.jena.update.UpdateProcessor;
-import org.apache.jena.update.UpdateRequest;
 
 import com.ibm.icu.util.Calendar;
+
+import jena.Stmt;
 
 
 /**
@@ -638,17 +640,38 @@ public class ImplConnection implements Connection {
     public Long selectTime(String query, int queryTimeout) throws SQLException {
         Statement stm = null;
         try{
-            Query q = QueryFactory.create(query);
-            QueryEngineHTTP qexec = QueryExecutionFactory.createServiceRequest(getEndpoint(), q);
+        	int queryType =Query.QueryTypeUnknown;
+        	QueryEngineHTTP qexec;
+        	try {
+	        	Query q = QueryFactory.create(query);
+	            qexec = QueryExecutionFactory.createServiceRequest(getEndpoint(), q);
+	            queryType = q.getQueryType();
+        	}
+        	catch (QueryException e){ // if sparql query is not 100% sparql compliant (e.g. blazegraph or virtuoso queries) use 'direct mode' of jena
+        		qexec = new QueryEngineHTTP(getEndpoint(), query);
+        		//try to detect query type manually // TODO improve recognition
+                if (query.matches(".*(?mi)^[^#]*Select\\s.*")|| query.matches(".*(?mi)^\\s*Select\\s.*"))
+                	queryType = Query.QueryTypeSelect;
+                else if (query.matches(".*(?mi)^[^#]*Ask\\s.*")|| query.matches(".*(?mi)^\\s*Ask\\s.*"))
+            		queryType = Query.QueryTypeAsk;
+                else if (query.matches(".*(?mi)^[^#]*Construct\\s.*")|| query.matches(".*(?mi)^\\s*Construct\\s.*"))
+                	queryType = Query.QueryTypeConstruct;
+                else if (query.matches(".*(?mi)^[^#]*Describe\\s.*")|| query.matches(".*(?mi)^\\s*Describe\\s.*"))
+                	queryType = Query.QueryTypeDescribe;
+        	}
 //			qexec.setTimeout(5000, 5000);
             qexec.setModelContentType(WebContent.contentTypeJSONLD);
-//			QueryExecution qexec = QueryExecutionFactory.sparqlService(getEndpoint(), q);
-            qexec.setTimeout(queryTimeout);
+        	
+			//QueryExecution qexec = QueryExecutionFactory.sparqlService(getEndpoint(), query);
+            qexec.setTimeout(queryTimeout);	
+
 //			stm = this.con.createStatement();
-//			stm.setQueryTimeout(queryTimeout);
+//			stm.setQueryTimeout(queryTimeout); 
 //			ResultSet rs=null;
             Calendar start = Calendar.getInstance();
-            switch(q.getQueryType()){
+           
+            try {
+            switch(queryType){
             case Query.QueryTypeAsk:
                 qexec.execAsk();
                 break;
@@ -667,17 +690,25 @@ public class ImplConnection implements Connection {
             case Query.QueryTypeSelect:
                 org.apache.jena.query.ResultSet r = qexec.execSelect();
                 m = r.getResourceModel();
+               // ResultSetFormatter.out(System.out, r) ;	
                 m.removeAll();
                 m.close();
                 m=null;
                 r = null;
                 break;
 
-            }
+            }}
+            catch (ResultSetException e) {
+            	if (e.getMessage().equalsIgnoreCase("Expected only object keys [type, value, xml:lang, datatype] but encountered 'subject'"))
+            		;//log.warning("Ignored ResultsetException because it seems to be an rdr resultset: "+query); // ignore resultset format exception when querying blazegraph and receiving rdr resultset 
+            	else
+            		throw e;
+				// TODO: handle exception in a better way
+			}
 //			rs = stm.executeQuery(query);
             Calendar end = Calendar.getInstance();
             qexec.close();
-            q = null;
+            query =null;
             qexec =null;
 //			if(rs==null){
 //				stm.close();
@@ -711,7 +742,6 @@ public class ImplConnection implements Connection {
     public Boolean isClosed() throws SQLException {
         return this.con.isClosed();
     }
-
 
 
 }

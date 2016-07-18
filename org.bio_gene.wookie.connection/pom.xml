@@ -4,7 +4,7 @@
 
     <groupId>org.bio_gene.wookie</groupId>
     <artifactId>connection</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>sparqlfix</version>
     <packaging>jar</packaging>
 
     <name>org.bio-gene.org.wookie.connection</name>
